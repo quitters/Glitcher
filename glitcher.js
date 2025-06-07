@@ -178,20 +178,27 @@ batchExportBtn.addEventListener('click', batchExport);
 // ========== Image Resizing Logic ==========
 
 function calculateAspectError(newWidth, newHeight, originalAspectRatio) {
-  if (newHeight === 0) { // Avoid division by zero for newAspectRatio
-    // If original aspect ratio was also effectively zero (e.g. 0 width, non-zero height),
-    // and new width is also 0, it's a "match". Otherwise, infinite error.
-    return (originalAspectRatio === 0 && newWidth === 0) ? 0 : Infinity;
+  // originalAspectRatio can be a positive number, 0 (for zero width), or Infinity (for zero height).
+
+  if (originalAspectRatio === Infinity) { // Original: width > 0, height = 0
+    return newHeight === 0 && newWidth > 0 ? 0 : Infinity; // Match if new is also zero height, positive width
+  }
+
+  if (originalAspectRatio === 0) { // Original: width = 0, height > 0
+    return newWidth === 0 && newHeight > 0 ? 0 : Infinity; // Match if new is also zero width, positive height
+  }
+
+  // At this point, originalAspectRatio is a finite positive number.
+
+  if (newHeight === 0) { // New: height = 0. Cannot match finite positive original AR.
+    return Infinity;
   }
   const newAspectRatio = newWidth / newHeight;
-
-  if (originalAspectRatio === 0) {
-    // newAspectRatio is not 0 here (due to newHeight !== 0 check)
-    // If original was 0-width and new is not, it's an infinite error.
-    return newAspectRatio === 0 ? 0 : Infinity; 
+  if (newWidth === 0) { // New: width = 0, height > 0. newAspectRatio is 0. Cannot match finite positive original AR.
+    return Infinity;
   }
-  
-  // Standard case: both aspect ratios are non-zero
+
+  // Both original and new aspect ratios are finite, positive numbers.
   return Math.abs(newAspectRatio - originalAspectRatio) / originalAspectRatio;
 }
 
@@ -213,18 +220,25 @@ function calculateOptimalDimensions(originalWidth, originalHeight) {
   const originalAspectRatio = safeOriginalWidth / safeOriginalHeight;
 
   let bestSolution = {
-    W_block: -1,
-    H_block: -1,
-    pixel_score: Infinity,
-    aspect_error: Infinity
+    W_block: -1, H_block: -1, pixel_score: Infinity, aspect_error: Infinity, meets_aspect_criteria: false
   };
+  const MAX_ACCEPTABLE_ASPECT_ERROR = 0.20; // 20% tolerance
 
-  if (1 <= MAX_WH_BLOCK_PRODUCT) { 
-      bestSolution.W_block = 1;
-      bestSolution.H_block = 1;
-      const initialPixels = BASE_UNIT * BASE_UNIT;
-      bestSolution.pixel_score = Math.abs(initialPixels - TARGET_PIXELS);
-      bestSolution.aspect_error = calculateAspectError(BASE_UNIT, BASE_UNIT, originalAspectRatio);
+  // Initialize bestSolution with a default (e.g., 1x1 block) if possible
+  if (MAX_WH_BLOCK_PRODUCT >= 1) {
+    const initialWBlock = 1, initialHBlock = 1;
+    const initialPixels = (initialWBlock * initialHBlock) * BASE_UNIT * BASE_UNIT;
+    const initialAspectError = calculateAspectError(initialWBlock * BASE_UNIT, initialHBlock * BASE_UNIT, originalAspectRatio);
+    bestSolution = {
+        W_block: initialWBlock,
+        H_block: initialHBlock,
+        pixel_score: Math.abs(initialPixels - TARGET_PIXELS),
+        aspect_error: initialAspectError,
+        meets_aspect_criteria: initialAspectError <= MAX_ACCEPTABLE_ASPECT_ERROR
+    };
+  } else {
+    // Not even a 1x1 block is possible within MAX_PIXELS, return smallest possible (or error)
+    return { width: BASE_UNIT, height: BASE_UNIT }; // Or handle error appropriately
   }
 
   for (let currentWBlock = 1; currentWBlock <= MAX_WH_BLOCK_PRODUCT; currentWBlock++) {
@@ -233,25 +247,45 @@ function calculateOptimalDimensions(originalWidth, originalHeight) {
       const currentPixelScore = Math.abs(currentPixels - TARGET_PIXELS);
       const candidateAspectError = calculateAspectError(currentWBlock * BASE_UNIT, currentHBlock * BASE_UNIT, originalAspectRatio);
 
+      const candidateMeetsAspectCriteria = candidateAspectError <= MAX_ACCEPTABLE_ASPECT_ERROR;
       let updateSolution = false;
-      if (currentPixelScore < bestSolution.pixel_score) {
-        updateSolution = true;
-      } else if (currentPixelScore === bestSolution.pixel_score) {
-        if (candidateAspectError < bestSolution.aspect_error) {
-          updateSolution = true;
-        }
-      }
 
+      if (bestSolution.W_block === -1) { // Should not happen if initialization is correct
+          updateSolution = true;
+      } else if (candidateMeetsAspectCriteria && bestSolution.meets_aspect_criteria) {
+          // Both current candidate and best solution meet aspect criteria
+          if (currentPixelScore < bestSolution.pixel_score) {
+              updateSolution = true;
+          } else if (currentPixelScore === bestSolution.pixel_score && candidateAspectError < bestSolution.aspect_error) {
+              updateSolution = true;
+          }
+      } else if (candidateMeetsAspectCriteria && !bestSolution.meets_aspect_criteria) {
+          // Candidate meets aspect criteria, but current best does not: prefer candidate
+          updateSolution = true;
+      } else if (!candidateMeetsAspectCriteria && !bestSolution.meets_aspect_criteria) {
+          // Neither candidate nor current best meet aspect criteria: use original logic (pixel_score first, then aspect_error)
+          if (currentPixelScore < bestSolution.pixel_score) {
+              updateSolution = true;
+          } else if (currentPixelScore === bestSolution.pixel_score && candidateAspectError < bestSolution.aspect_error) {
+              updateSolution = true;
+          }
+      } // else: !candidateMeetsAspectCriteria && bestSolution.meets_aspect_criteria (Candidate is bad aspect, best is good aspect - do not update)
+      
       if (updateSolution) {
         bestSolution.W_block = currentWBlock;
         bestSolution.H_block = currentHBlock;
         bestSolution.pixel_score = currentPixelScore;
         bestSolution.aspect_error = candidateAspectError;
+        bestSolution.meets_aspect_criteria = candidateMeetsAspectCriteria;
       }
     }
   }
   
-  if (bestSolution.W_block === -1) {
+  // If bestSolution.W_block is still -1 (e.g., MAX_WH_BLOCK_PRODUCT was < 1), 
+  // the initialization already returned. Otherwise, W_block will be at least 1.
+  // So, this check might be redundant if initialization is robust.
+  if (bestSolution.W_block === -1) { 
+      // This case should ideally be handled by the initialization logic for MAX_WH_BLOCK_PRODUCT < 1
       return { width: BASE_UNIT, height: BASE_UNIT }; 
   }
 
