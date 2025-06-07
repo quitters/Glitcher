@@ -175,6 +175,92 @@ audioReactiveCheckbox.addEventListener('change', toggleAudioReactive);
 // Batch export
 batchExportBtn.addEventListener('click', batchExport);
 
+// ========== Image Resizing Logic ==========
+
+function calculateAspectError(newWidth, newHeight, originalAspectRatio) {
+  if (newHeight === 0) { // Avoid division by zero for newAspectRatio
+    // If original aspect ratio was also effectively zero (e.g. 0 width, non-zero height),
+    // and new width is also 0, it's a "match". Otherwise, infinite error.
+    return (originalAspectRatio === 0 && newWidth === 0) ? 0 : Infinity;
+  }
+  const newAspectRatio = newWidth / newHeight;
+
+  if (originalAspectRatio === 0) {
+    // newAspectRatio is not 0 here (due to newHeight !== 0 check)
+    // If original was 0-width and new is not, it's an infinite error.
+    return newAspectRatio === 0 ? 0 : Infinity; 
+  }
+  
+  // Standard case: both aspect ratios are non-zero
+  return Math.abs(newAspectRatio - originalAspectRatio) / originalAspectRatio;
+}
+
+function calculateOptimalDimensions(originalWidth, originalHeight) {
+  const TARGET_PIXELS = 1048576; // 1MP
+  const MAX_PIXELS = 2097152;    // 2MP
+  const BASE_UNIT = 64;
+
+  const MAX_WH_BLOCK_PRODUCT = MAX_PIXELS / (BASE_UNIT * BASE_UNIT); // Should be 512
+
+  let safeOriginalWidth = originalWidth;
+  let safeOriginalHeight = originalHeight;
+
+  if (safeOriginalWidth <= 0 || safeOriginalHeight <= 0) {
+    // Default to a 1:1 aspect ratio if original dimensions are invalid for ratio calculation
+    safeOriginalWidth = BASE_UNIT; 
+    safeOriginalHeight = BASE_UNIT;
+  }
+  const originalAspectRatio = safeOriginalWidth / safeOriginalHeight;
+
+  let bestSolution = {
+    W_block: -1,
+    H_block: -1,
+    pixel_score: Infinity,
+    aspect_error: Infinity
+  };
+
+  if (1 <= MAX_WH_BLOCK_PRODUCT) { 
+      bestSolution.W_block = 1;
+      bestSolution.H_block = 1;
+      const initialPixels = BASE_UNIT * BASE_UNIT;
+      bestSolution.pixel_score = Math.abs(initialPixels - TARGET_PIXELS);
+      bestSolution.aspect_error = calculateAspectError(BASE_UNIT, BASE_UNIT, originalAspectRatio);
+  }
+
+  for (let currentWBlock = 1; currentWBlock <= MAX_WH_BLOCK_PRODUCT; currentWBlock++) {
+    for (let currentHBlock = 1; (currentWBlock * currentHBlock) <= MAX_WH_BLOCK_PRODUCT; currentHBlock++) {
+      const currentPixels = (currentWBlock * currentHBlock) * BASE_UNIT * BASE_UNIT;
+      const currentPixelScore = Math.abs(currentPixels - TARGET_PIXELS);
+      const candidateAspectError = calculateAspectError(currentWBlock * BASE_UNIT, currentHBlock * BASE_UNIT, originalAspectRatio);
+
+      let updateSolution = false;
+      if (currentPixelScore < bestSolution.pixel_score) {
+        updateSolution = true;
+      } else if (currentPixelScore === bestSolution.pixel_score) {
+        if (candidateAspectError < bestSolution.aspect_error) {
+          updateSolution = true;
+        }
+      }
+
+      if (updateSolution) {
+        bestSolution.W_block = currentWBlock;
+        bestSolution.H_block = currentHBlock;
+        bestSolution.pixel_score = currentPixelScore;
+        bestSolution.aspect_error = candidateAspectError;
+      }
+    }
+  }
+  
+  if (bestSolution.W_block === -1) {
+      return { width: BASE_UNIT, height: BASE_UNIT }; 
+  }
+
+  return {
+    width: bestSolution.W_block * BASE_UNIT,
+    height: bestSolution.H_block * BASE_UNIT,
+  };
+}
+
 // ========== Load Image & Start ==========
 
 function handleFileSelect() {
@@ -185,12 +271,17 @@ function handleFileSelect() {
   reader.onload = e => {
     const img = new Image();
     img.onload = () => {
-      imgWidth  = img.width;
-      imgHeight = img.height;
+      const originalW = img.width;
+      const originalH = img.height;
+      const { width: newCalculatedWidth, height: newCalculatedHeight } = calculateOptimalDimensions(originalW, originalH);
+
+      imgWidth  = newCalculatedWidth;
+      imgHeight = newCalculatedHeight;
       canvas.width  = imgWidth;
       canvas.height = imgHeight;
 
-      ctx.drawImage(img, 0, 0);
+      // Ensure the image is drawn filling the new canvas dimensions
+      ctx.drawImage(img, 0, 0, imgWidth, imgHeight); 
       originalImageData = ctx.getImageData(0, 0, imgWidth, imgHeight);
 
       glitchImageData = new ImageData(
