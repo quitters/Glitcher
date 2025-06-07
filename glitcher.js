@@ -250,26 +250,29 @@ function calculateOptimalDimensions(originalWidth, originalHeight) {
       const candidateMeetsAspectCriteria = candidateAspectError <= MAX_ACCEPTABLE_ASPECT_ERROR;
       let updateSolution = false;
 
-      if (bestSolution.W_block === -1) { // Should not happen if initialization is correct
+      if (bestSolution.W_block === -1) { // Should only happen if MAX_WH_BLOCK_PRODUCT was < 1 initially
           updateSolution = true;
       } else if (candidateMeetsAspectCriteria && bestSolution.meets_aspect_criteria) {
-          // Both current candidate and best solution meet aspect criteria
-          if (currentPixelScore < bestSolution.pixel_score) {
+          // Both current candidate and best solution meet the aspect threshold.
+          // Prioritize *better aspect ratio first*.
+          if (candidateAspectError < bestSolution.aspect_error) {
               updateSolution = true;
-          } else if (currentPixelScore === bestSolution.pixel_score && candidateAspectError < bestSolution.aspect_error) {
+          } else if (candidateAspectError === bestSolution.aspect_error && currentPixelScore < bestSolution.pixel_score) {
+              // If aspect ratios are equally good, then pick based on pixel score.
               updateSolution = true;
           }
       } else if (candidateMeetsAspectCriteria && !bestSolution.meets_aspect_criteria) {
-          // Candidate meets aspect criteria, but current best does not: prefer candidate
+          // Candidate meets aspect criteria, but current best does not: prefer candidate.
           updateSolution = true;
       } else if (!candidateMeetsAspectCriteria && !bestSolution.meets_aspect_criteria) {
-          // Neither candidate nor current best meet aspect criteria: use original logic (pixel_score first, then aspect_error)
+          // Neither candidate nor current best meet aspect criteria: fallback to prioritizing pixel score, then aspect error.
           if (currentPixelScore < bestSolution.pixel_score) {
               updateSolution = true;
           } else if (currentPixelScore === bestSolution.pixel_score && candidateAspectError < bestSolution.aspect_error) {
               updateSolution = true;
           }
-      } // else: !candidateMeetsAspectCriteria && bestSolution.meets_aspect_criteria (Candidate is bad aspect, best is good aspect - do not update)
+      } // else: !candidateMeetsAspectCriteria && bestSolution.meets_aspect_criteria 
+        // (Candidate is bad aspect-wise, current best is good aspect-wise - do not update bestSolution)
       
       if (updateSolution) {
         bestSolution.W_block = currentWBlock;
