@@ -493,7 +493,7 @@
         <select id="color-effect-select" class="control-select">
           <option value="off">Off</option>
           <option value="chromaticAberration">📺 Chromatic Aberration</option>
-          <option value="colorSeparation">🔴 RGB Separation</option>
+          <!-- <option value="colorSeparation">🔴 RGB Separation</option> REMOVED -->
           <option value="hueShift">🌈 Hue Shift</option>
           <option value="saturation">💎 Saturation Boost</option>
           <option value="invert">🔄 Color Invert</option>
@@ -506,6 +506,48 @@
           </div>
           <input type="range" id="color-intensity-range" class="control-slider" min="0" max="100" step="1" value="50">
         </div>
+
+        <!-- NEW: Invert Color Specific Parameters -->
+        <div id="invert-color-params-container" style="display: none; margin-top: 15px;">
+          <div class="slider-container"> <!-- Reusing slider-container for consistent styling -->
+            <div class="slider-label">
+              <span>⚖️ Inversion Type</span>
+            </div>
+            <select id="invertColorTypeSelect" class="control-select" style="width: 100%;">
+              <option value="full_rgb" selected>Full RGB</option>
+              <option value="red_only">Red Channel Only</option>
+              <option value="green_only">Green Channel Only</option>
+              <option value="blue_only">Blue Channel Only</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- NEW: Chromatic Aberration Specific Parameters -->
+        <div id="chromatic-aberration-params-container" style="display: none; margin-top: 15px;">
+          <div class="slider-container"> <!-- Reusing slider-container for consistent styling -->
+            <div class="slider-label">
+              <span>🌀 Mode</span>
+              <!-- Value display for select might not be needed if options are descriptive -->
+            </div>
+            <select id="chromaticAberrationModeSelect" class="control-select" style="width: 100%;">
+              <option value="horizontal" selected>Horizontal</option>
+              <option value="vertical">Vertical</option>
+              <option value="radial">Radial</option>
+              <option value="custom">Custom Angle</option>
+            </select>
+          </div>
+
+          <div id="chromatic-aberration-angle-control-container" style="display: none; margin-top: 10px;">
+            <div class="slider-container">
+              <div class="slider-label">
+                <span>📐 Custom Angle</span>
+                <span id="chromaticAberrationAngleValue" class="slider-value">0</span>
+              </div>
+              <input type="range" id="chromaticAberrationAngleRange" class="control-slider" min="0" max="360" step="1" value="0">
+            </div>
+          </div>
+        </div>
+        <!-- END NEW -->
       </div>
 
       <!-- Datamoshing -->

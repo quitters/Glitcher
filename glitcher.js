@@ -38,6 +38,20 @@ const datamoshIntensityValue = document.getElementById('datamosh-intensity-value
 const audioSensitivityRange = document.getElementById('audio-sensitivity-range');
 const audioSensitivityValue = document.getElementById('audio-sensitivity-value');
 
+// NEW Chromatic Aberration UI Elements
+const chromaticAberrationParamsContainer = document.getElementById('chromatic-aberration-params-container');
+const chromaticAberrationModeSelect = document.getElementById('chromaticAberrationModeSelect');
+const chromaticAberrationAngleControlContainer = document.getElementById('chromatic-aberration-angle-control-container');
+const chromaticAberrationAngleRange = document.getElementById('chromaticAberrationAngleRange');
+const chromaticAberrationAngleValue = document.getElementById('chromaticAberrationAngleValue');
+
+// NEW Invert Color UI Elements
+const invertColorParamsContainer = document.getElementById('invert-color-params-container');
+const invertColorTypeSelect = document.getElementById('invertColorTypeSelect');
+
+// Container for the general color intensity slider to easily show/hide it
+const colorIntensityContainer = document.getElementById('color-intensity-range')?.parentElement;
+
 // Buttons
 const randomizeBtn       = document.getElementById('randomize-btn');
 const playPauseBtn       = document.getElementById('play-pause-btn');
@@ -140,9 +154,90 @@ colorIntensityRange.addEventListener('input', () => {
 datamoshIntensityRange.addEventListener('input', () => {
   datamoshIntensityValue.textContent = datamoshIntensityRange.value;
 });
+
+// NEW Event Listeners for Chromatic Aberration Controls
+if (colorEffectSelect) {
+  colorEffectSelect.addEventListener('change', () => {
+    const selectedEffect = colorEffectSelect.value;
+
+    // Hide all specific param containers by default
+    if (chromaticAberrationParamsContainer) chromaticAberrationParamsContainer.style.display = 'none';
+    if (invertColorParamsContainer) invertColorParamsContainer.style.display = 'none';
+
+    // Manage visibility of the general intensity slider
+    if (colorIntensityContainer) {
+        // Hide intensity for 'invert' or if no effect ('off') is selected
+        if (selectedEffect === 'invert' || selectedEffect === 'off') {
+            colorIntensityContainer.style.display = 'none';
+        } else {
+            colorIntensityContainer.style.display = 'block';
+        }
+    }
+
+    if (selectedEffect === 'chromaticAberration') {
+      if (chromaticAberrationParamsContainer) chromaticAberrationParamsContainer.style.display = 'block';
+      // Trigger mode select's change handler for angle control visibility
+      if (chromaticAberrationModeSelect) {
+        chromaticAberrationModeSelect.dispatchEvent(new Event('change'));
+      }
+    } else if (selectedEffect === 'invert') {
+      if (invertColorParamsContainer) invertColorParamsContainer.style.display = 'block';
+    }
+    // For other effects or 'off', specific containers remain hidden, intensity visibility handled above
+  });
+
+  // Initialize UI state based on the default selected color effect
+  // Ensure this runs after all DOM elements are available and listeners attached.
+  // A common practice is to put such calls at the end of the script or in a DOMContentLoaded listener.
+  // For now, dispatching event directly here assuming elements are parsed.
+  // colorEffectSelect.dispatchEvent(new Event('change')); // This will be added at the end of the file.
+}
+
+if (chromaticAberrationModeSelect && chromaticAberrationAngleControlContainer) {
+  chromaticAberrationModeSelect.addEventListener('change', () => {
+    if (chromaticAberrationModeSelect.value === 'custom') {
+      chromaticAberrationAngleControlContainer.style.display = 'block';
+    } else {
+      chromaticAberrationAngleControlContainer.style.display = 'none';
+    }
+  });
+}
+
+if (chromaticAberrationAngleRange && chromaticAberrationAngleValue) {
+  chromaticAberrationAngleRange.addEventListener('input', () => {
+    chromaticAberrationAngleValue.textContent = chromaticAberrationAngleRange.value;
+  });
+}
+
+// Initialize visibility based on current selections (e.g., on page load/script run)
+// This ensures the UI is correct if the page is reloaded with 'chromaticAberration' selected.
+if (colorEffectSelect && chromaticAberrationParamsContainer && chromaticAberrationModeSelect && chromaticAberrationAngleControlContainer) {
+    if (colorEffectSelect.value === 'chromaticAberration') {
+        chromaticAberrationParamsContainer.style.display = 'block';
+        if (chromaticAberrationModeSelect.value === 'custom') {
+            chromaticAberrationAngleControlContainer.style.display = 'block';
+        } else {
+            chromaticAberrationAngleControlContainer.style.display = 'none';
+        }
+    } else {
+        chromaticAberrationParamsContainer.style.display = 'none';
+    }
+} else {
+    // Fallback if elements aren't found, hide them to prevent errors or partial UI
+    if(chromaticAberrationParamsContainer) chromaticAberrationParamsContainer.style.display = 'none';
+    if(chromaticAberrationAngleControlContainer) chromaticAberrationAngleControlContainer.style.display = 'none';
+}
 audioSensitivityRange.addEventListener('input', () => {
   audioSensitivityValue.textContent = audioSensitivityRange.value;
 });
+
+// Initial UI setup based on default selections
+if (colorEffectSelect) {
+  colorEffectSelect.dispatchEvent(new Event('change'));
+}
+if (chromaticAberrationModeSelect) {
+    chromaticAberrationModeSelect.dispatchEvent(new Event('change'));
+}
 
 // Toggle spiral direction
 spiralDirectionBtn.addEventListener('click', () => {
@@ -445,7 +540,13 @@ function animate(currentTime) {
 
   // Color effects
   if (colorEffect !== 'off') {
-    applyColorEffect(glitchImageData, colorEffect, colorIntensity * audioMultiplier);
+    const newPixelData = applyColorEffect(glitchImageData, colorEffect, colorIntensity * audioMultiplier);
+    if (newPixelData && newPixelData !== glitchImageData.data) {
+      // Ensure glitchImageData.data is updated with the new pixel data.
+      // Create a new Uint8ClampedArray from the returned data to be safe,
+      // as ImageData.data expects this type.
+      glitchImageData.data.set(new Uint8ClampedArray(newPixelData));
+    }
   }
 
   // Datamoshing
@@ -662,20 +763,34 @@ function swirlRectangle(imageData, rect, swirlStrength, swirlType) {
 }
 
 function computeSwirlAngle(r, maxR, strength, type) {
+  let angle = 0;
+  // Determine the multiplier based on the global spiralDirection
+  const directionMultiplier = (spiralDirection === 'cw' ? 1 : -1);
+
   switch (type) {
-    case 'cw':
-      return +strength * (r / maxR);
-    case 'ccw':
-      return -strength * (r / maxR);
+    case 'cw': // Explicit clockwise selection from UI
+      angle = +strength * (r / maxR);
+      break;
+    case 'ccw': // Explicit counter-clockwise selection from UI
+      angle = -strength * (r / maxR);
+      break;
     case 'insideOut':
-      return +strength * (1 - r/maxR);
+      // Apply global direction to the base 'insideOut' effect
+      angle = strength * (1 - r / maxR) * directionMultiplier;
+      break;
     case 'outsideIn':
-      return +strength * (r/maxR);
+      // Apply global direction to the base 'outsideIn' effect
+      angle = strength * (r / maxR) * directionMultiplier;
+      break;
     case 'random':
-      return (Math.random()*2 - 1)*strength * (r/maxR);
+      // Random mode determines its own directionality, not affected by global toggle for now
+      angle = (Math.random() * 2 - 1) * strength * (r / maxR);
+      break;
     default:
-      return 0;
+      angle = 0;
+      break;
   }
+  return angle;
 }
 
 // ========== Slice Glitch Functions ==========
@@ -1007,68 +1122,165 @@ function circularSort(imageData) {
 
 // ========== New Color Effects ==========
 
+// New applyColorEffect function
 function applyColorEffect(imageData, effectType, intensity) {
-  const { data, width, height } = imageData;
-  const factor = intensity / 100;
+  const { data: srcPixelData, width, height } = imageData;
+  const strengthFactor = intensity / 100; // Strength for effects (0-1)
+
+  let outputPixelData = null; // Will be assigned based on effect type
 
   switch (effectType) {
     case 'chromaticAberration':
-      chromaticAberration(data, width, height, factor);
-      break;
-    case 'colorSeparation':
-      rgbSeparation(data, width, height, factor);
+      const modeDropdown = document.getElementById('chromaticAberrationModeSelect');
+      const angleSlider = document.getElementById('chromaticAberrationAngleRange');
+      const currentMode = modeDropdown ? modeDropdown.value : 'horizontal';
+      const currentAngle = angleSlider ? parseFloat(angleSlider.value) : 0;
+      // Chromatic Aberration is non-destructive as per previous implementation
+      outputPixelData = chromaticAberration(srcPixelData, width, height, currentMode, strengthFactor, currentAngle);
       break;
     case 'hueShift':
-      hueShift(data, width, height, factor);
+      hueShift(srcPixelData, width, height, strengthFactor); // Destructive
+      outputPixelData = srcPixelData;
       break;
     case 'saturation':
-      saturationBoost(data, width, height, factor);
+      saturationBoost(srcPixelData, width, height, strengthFactor); // Destructive
+      outputPixelData = srcPixelData;
       break;
-
     case 'vintage':
-      vintageEffect(data, width, height, factor);
+      vintageEffect(srcPixelData, width, height, strengthFactor); // Destructive
+      outputPixelData = srcPixelData;
       break;
+    case 'invert': // NEW CASE
+      const invertTypeDropdown = document.getElementById('invertColorTypeSelect'); // UI element to be added
+      const currentInvertType = invertTypeDropdown ? invertTypeDropdown.value : 'full_rgb';
+      invertColors(srcPixelData, width, height, currentInvertType); // Destructive
+      outputPixelData = srcPixelData;
+      break;
+    default:
+      // If no effect type matches, return the original pixel data
+      // This also handles the 'none' case implicitly if srcPixelData is the original image data.
+      return srcPixelData;
   }
+  
+  return outputPixelData;
 }
 
-function chromaticAberration(data, width, height, strength) {
-  const offset = Math.floor(strength * 10);
-  const temp = new Uint8ClampedArray(data);
-  
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const idx = (y * width + x) * 4;
-      
-      const redX = Math.min(x + offset, width - 1);
-      const redIdx = (y * width + redX) * 4;
-      data[idx] = temp[redIdx];
-      
-      const blueX = Math.max(x - offset, 0);
-      const blueIdx = (y * width + blueX) * 4;
-      data[idx + 2] = temp[blueIdx + 2];
-    }
+// New combined Chromatic Aberration function (non-destructive)
+function chromaticAberration(srcData, width, height, mode, strength, angleDegrees = 0) {
+  const outputData = new Uint8ClampedArray(srcData.length);
+  // Initialize outputData by copying all of srcData.
+  // Effect logic will then overwrite specific channels from their shifted source locations.
+  // Alpha is preserved unless a pixel is shifted from out-of-bounds (then R,G,B become 0).
+  for (let i = 0; i < srcData.length; i++) {
+    outputData[i] = srcData[i];
   }
-}
 
-function rgbSeparation(data, width, height, strength) {
-  const offset = Math.floor(strength * 15);
-  const temp = new Uint8ClampedArray(data);
-  
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const idx = (y * width + x) * 4;
-      
-      const rX = Math.min(x + offset, width - 1);
-      const rIdx = (y * width + rX) * 4;
-      data[idx] = temp[rIdx];
-      
-      data[idx + 1] = temp[idx + 1];
-      
-      const bX = Math.max(x - offset, 0);
-      const bIdx = (y * width + bX) * 4;
-      data[idx + 2] = temp[bIdx + 2];
+  const baseOffset = Math.floor(strength * 10); // For H, V, R modes (derived from old chromaticAberration)
+  const customDistance = Math.floor(strength * 15); // For custom mode (derived from old rgbSeparation)
+
+  if (mode === 'horizontal') {
+    if (baseOffset === 0) return srcData; // No change, return original data reference
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        
+        const redX = Math.min(x + baseOffset, width - 1);
+        const redSrcIdx = (y * width + redX) * 4;
+        outputData[idx] = srcData[redSrcIdx]; // Red
+        // Green is taken from the initial full copy of srcData
+        
+        const blueX = Math.max(x - baseOffset, 0);
+        const blueSrcIdx = (y * width + blueX) * 4;
+        outputData[idx + 2] = srcData[blueSrcIdx + 2]; // Blue
+      }
     }
+  } else if (mode === 'vertical') {
+    if (baseOffset === 0) return srcData;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+
+        const redY = Math.min(y + baseOffset, height - 1);
+        const redSrcIdx = (redY * width + x) * 4;
+        outputData[idx] = srcData[redSrcIdx]; // Red
+
+        const blueY = Math.max(y - baseOffset, 0);
+        const blueSrcIdx = (blueY * width + x) * 4;
+        outputData[idx + 2] = srcData[blueSrcIdx + 2]; // Blue
+      }
+    }
+  } else if (mode === 'radial') {
+    if (baseOffset === 0) return srcData;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const dx = x - centerX;
+        const dy = y - centerY;
+        const distFromCenter = Math.sqrt(dx * dx + dy * dy);
+
+        if (distFromCenter === 0) continue; 
+
+        const normalizedDx = dx / distFromCenter;
+        const normalizedDy = dy / distFromCenter;
+
+        const rSrcX = Math.round(x + normalizedDx * baseOffset);
+        const rSrcY = Math.round(y + normalizedDy * baseOffset);
+        if (rSrcX >= 0 && rSrcX < width && rSrcY >= 0 && rSrcY < height) {
+          outputData[idx] = srcData[(rSrcY * width + rSrcX) * 4];
+        } else { outputData[idx] = 0; } // Black if out of bounds
+
+        const bSrcX = Math.round(x - normalizedDx * baseOffset);
+        const bSrcY = Math.round(y - normalizedDy * baseOffset);
+        if (bSrcX >= 0 && bSrcX < width && bSrcY >= 0 && bSrcY < height) {
+          outputData[idx + 2] = srcData[(bSrcY * width + bSrcX) * 4 + 2];
+        } else { outputData[idx + 2] = 0; } // Black if out of bounds
+      }
+    }
+  } else if (mode === 'custom') {
+    if (customDistance === 0) return srcData;
+
+    const angleRad = angleDegrees * Math.PI / 180;
+    // Offsets for R, G, B channels based on angle & distance
+    const rOffX = Math.cos(angleRad) * customDistance;
+    const rOffY = Math.sin(angleRad) * customDistance;
+    const gOffX = Math.cos(angleRad + (2 * Math.PI / 3)) * customDistance; // G shifted +120 deg
+    const gOffY = Math.sin(angleRad + (2 * Math.PI / 3)) * customDistance;
+    const bOffX = Math.cos(angleRad + (4 * Math.PI / 3)) * customDistance; // B shifted +240 deg
+    const bOffY = Math.sin(angleRad + (4 * Math.PI / 3)) * customDistance;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const baseIdx = (y * width + x) * 4;
+
+        // Sample Red channel
+        const rSrcX_custom = Math.round(x + rOffX);
+        const rSrcY_custom = Math.round(y + rOffY);
+        if (rSrcX_custom >= 0 && rSrcX_custom < width && rSrcY_custom >= 0 && rSrcY_custom < height) {
+          outputData[baseIdx] = srcData[(rSrcY_custom * width + rSrcX_custom) * 4];
+        } else { outputData[baseIdx] = 0; }
+
+        // Sample Green channel
+        const gSrcX_custom = Math.round(x + gOffX);
+        const gSrcY_custom = Math.round(y + gOffY);
+        if (gSrcX_custom >= 0 && gSrcX_custom < width && gSrcY_custom >= 0 && gSrcY_custom < height) {
+          outputData[baseIdx + 1] = srcData[(gSrcY_custom * width + gSrcX_custom) * 4 + 1];
+        } else { outputData[baseIdx + 1] = 0; }
+
+        // Sample Blue channel
+        const bSrcX_custom = Math.round(x + bOffX);
+        const bSrcY_custom = Math.round(y + bOffY);
+        if (bSrcX_custom >= 0 && bSrcX_custom < width && bSrcY_custom >= 0 && bSrcY_custom < height) {
+          outputData[baseIdx + 2] = srcData[(bSrcY_custom * width + bSrcX_custom) * 4 + 2];
+        } else { outputData[baseIdx + 2] = 0; }
+      }
+    }
+  } else { 
+    // Unknown mode or no effective change from parameters
+    return srcData; // Return original data reference
   }
+  return outputData;
 }
 
 function hueShift(data, width, height, strength) {
@@ -1117,6 +1329,37 @@ function vintageEffect(data, width, height, strength) {
     data[i] = r * (1 - strength) + newR * strength;
     data[i + 1] = g * (1 - strength) + newG * strength;
     data[i + 2] = b * (1 - strength) + newB * strength;
+  }
+}
+
+function invertColors(data, width, height, inversionType) {
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    // Alpha channel (data[i+3]) is usually not inverted
+
+    switch (inversionType) {
+      case 'full_rgb':
+        data[i] = 255 - r;
+        data[i + 1] = 255 - g;
+        data[i + 2] = 255 - b;
+        break;
+      case 'red_only':
+        data[i] = 255 - r;
+        break;
+      case 'green_only':
+        data[i + 1] = 255 - g;
+        break;
+      case 'blue_only':
+        data[i + 2] = 255 - b;
+        break;
+      default: // Default to full RGB if type is unknown
+        data[i] = 255 - r;
+        data[i + 1] = 255 - g;
+        data[i + 2] = 255 - b;
+        break;
+    }
   }
 }
 
@@ -1789,8 +2032,8 @@ function randomizeSettingsQuiet() {
 
 // ========== Initialize ==========
 // Set default color offset for Slice Glitch effect to 0
-colorOffsetRange.value = 0;
-colorOffsetValue.textContent = 0;
+if(colorOffsetRange) colorOffsetRange.value = 0;
+if(colorOffsetValue) colorOffsetValue.textContent = 0;
 
 // Set initial button states
 updatePlayPauseButton();
