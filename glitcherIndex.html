@@ -403,6 +403,91 @@
         </select>
       </div>
 
+      <!-- Selection Method -->
+      <div class="control-group">
+        <div class="group-title">🎯 Selection Method</div>
+        <select id="selection-method" class="control-select">
+          <option value="random">🎲 Random (Classic)</option>
+          <option value="colorRange">🎨 Color Range</option>
+          <option value="brightness">💡 Brightness Zones</option>
+          <option value="edgeDetection">📐 Edge Detection</option>
+          <option value="organicShapes">🫧 Organic Shapes</option>
+          <option value="contentAware">🧠 Content Aware</option>
+        </select>
+
+        <!-- Color Range Controls -->
+        <div id="color-range-controls" style="display: none;">
+          <div class="slider-container">
+            <div class="slider-label">
+              <span>🌈 Target Hue</span>
+              <span id="target-hue-value" class="slider-value">180</span>
+            </div>
+            <input type="range" id="target-hue" class="control-slider" 
+                   min="0" max="360" value="180">
+          </div>
+          
+          <div class="slider-container">
+            <div class="slider-label">
+              <span>🎯 Color Tolerance</span>
+              <span id="color-tolerance-value" class="slider-value">30</span>
+            </div>
+            <input type="range" id="color-tolerance" class="control-slider" 
+                   min="5" max="60" value="30">
+          </div>
+          
+          <div class="slider-container">
+            <div class="slider-label">
+              <span>📏 Min Region Size</span>
+              <span id="min-region-size-value" class="slider-value">100</span>
+            </div>
+            <input type="range" id="min-region-size" class="control-slider" 
+                   min="50" max="500" value="100">
+          </div>
+        </div>
+
+        <!-- Brightness Controls -->
+        <div id="brightness-controls" style="display: none;">
+          <select id="brightness-zone" class="control-select">
+            <option value="shadows">🌑 Shadows</option>
+            <option value="midtones">🌓 Midtones</option>
+            <option value="highlights">🌕 Highlights</option>
+          </select>
+        </div>
+
+        <!-- Edge Detection Controls -->
+        <div id="edge-detection-controls" style="display: none;">
+          <div class="slider-container">
+            <div class="slider-label">
+              <span>🔍 Edge Sensitivity</span>
+              <span id="edge-threshold-value" class="slider-value">30</span>
+            </div>
+            <input type="range" id="edge-threshold" class="control-slider" 
+                   min="10" max="100" value="30">
+          </div>
+        </div>
+
+        <!-- Organic Shape Controls -->
+        <div id="organic-shape-controls" style="display: none;">
+          <div class="slider-container">
+            <div class="slider-label">
+              <span>🌊 Shape Randomness</span>
+              <span id="shape-randomness-value" class="slider-value">0.3</span>
+            </div>
+            <input type="range" id="shape-randomness" class="control-slider" 
+                   min="0" max="1" step="0.1" value="0.3">
+          </div>
+          
+          <div class="slider-container">
+            <div class="slider-label">
+              <span>✨ Shape Count</span>
+              <span id="shape-count-value" class="slider-value">3</span>
+            </div>
+            <input type="range" id="shape-count" class="control-slider" 
+                   min="1" max="10" value="3">
+          </div>
+        </div>
+      </div>
+
       <!-- Direction Controls -->
       <div class="control-group">
         <div class="group-title">🧭 Movement Direction</div>
