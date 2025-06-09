@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "glitcherIndex.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "glitcher.js",
+      "use": "@vercel/static"
+  }],
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/.*", "dest": "/glitcherIndex.html" }
+  ]
+}
