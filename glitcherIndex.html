@@ -147,6 +147,12 @@
       transform: translateY(-2px);
       box-shadow: 0 8px 20px rgba(78, 205, 196, 0.4);
     }
+    
+    .control-button.active {
+      background: linear-gradient(145deg, #45b7d1, #3498db);
+      box-shadow: inset 0 2px 5px rgba(0,0,0,0.2), 0 4px 10px rgba(69, 183, 209, 0.4);
+      transform: translateY(1px);
+    }
 
     .danger-button {
       background: linear-gradient(145deg, #ff6b6b, #ff5252);
@@ -304,6 +310,22 @@
       box-shadow: 0 15px 35px rgba(0,0,0,0.3);
       border: 2px solid rgba(255,255,255,0.1);
     }
+    
+    #canvas.select-cursor {
+      cursor: crosshair;
+    }
+    
+    #canvas.brush-cursor {
+      cursor: none;
+    }
+    
+    #canvas.wand-cursor {
+      cursor: crosshair;
+    }
+    
+    #canvas.lasso-cursor {
+      cursor: crosshair;
+    }
 
     /* Button Grid */
     .button-grid {
@@ -406,6 +428,13 @@
       <!-- Selection Method -->
       <div class="control-group">
         <div class="group-title">🎯 Selection Method</div>
+        
+        <!-- Selection Mode Toggle -->
+        <div class="checkbox-container" style="margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+          <input type="checkbox" id="manual-selection-mode" class="control-checkbox">
+          <label for="manual-selection-mode">✋ Manual Selection Mode</label>
+        </div>
+        
         <select id="selection-method" class="control-select">
           <option value="random">🎲 Random (Classic)</option>
           <option value="colorRange">🎨 Color Range</option>
@@ -413,6 +442,7 @@
           <option value="edgeDetection">📐 Edge Detection</option>
           <option value="organicShapes">🫧 Organic Shapes</option>
           <option value="contentAware">🧠 Content Aware</option>
+          <option value="combined">🌀 Combined Methods</option>
         </select>
 
         <!-- Color Range Controls -->
@@ -484,6 +514,61 @@
             </div>
             <input type="range" id="shape-count" class="control-slider" 
                    min="1" max="10" value="3">
+          </div>
+        </div>
+        
+        <!-- Combined Method Controls -->
+        <div id="combined-controls" style="display: none;">
+          <div class="checkbox-container">
+            <input type="checkbox" id="combine-color" class="control-checkbox" checked>
+            <label for="combine-color">🎨 Use Color Range</label>
+          </div>
+          <div class="checkbox-container">
+            <input type="checkbox" id="combine-brightness" class="control-checkbox">
+            <label for="combine-brightness">💡 Use Brightness</label>
+          </div>
+          <div class="checkbox-container">
+            <input type="checkbox" id="combine-edges" class="control-checkbox" checked>
+            <label for="combine-edges">📐 Use Edges</label>
+          </div>
+        </div>
+        
+        <!-- Preview Toggle -->
+        <div class="checkbox-container" style="margin-top: 15px;">
+          <input type="checkbox" id="selection-preview-checkbox" class="control-checkbox">
+          <label for="selection-preview-checkbox">👁️ Show Selection Preview</label>
+        </div>
+        
+        <!-- Selection Sensitivity -->
+        <div class="slider-container" style="margin-top: 15px;">
+          <div class="slider-label">
+            <span>🎯 Selection Sensitivity</span>
+            <span id="selection-sensitivity-value" class="slider-value">1.0</span>
+          </div>
+          <input type="range" id="selection-sensitivity" class="control-slider" 
+                 min="0.5" max="2.0" step="0.1" value="1.0">
+        </div>
+        
+        <!-- Interactive Tools -->
+        <div class="control-group" style="margin-top: 15px; background: rgba(78, 205, 196, 0.1); border: 1px solid rgba(78, 205, 196, 0.3);">
+          <div class="group-title">✏️ Interactive Tools</div>
+          <div class="button-grid">
+            <button id="select-tool" class="control-button toggle-button" data-tool="select">🔲 Select</button>
+            <button id="brush-tool" class="control-button toggle-button" data-tool="brush">🖌️ Brush</button>
+            <button id="wand-tool" class="control-button toggle-button" data-tool="wand">✨ Wand</button>
+            <button id="lasso-tool" class="control-button toggle-button" data-tool="lasso">🔗 Lasso</button>
+          </div>
+          <div class="slider-container" style="margin-top: 10px;">
+            <div class="slider-label">
+              <span>🎨 Brush Size</span>
+              <span id="brush-size-value" class="slider-value">30</span>
+            </div>
+            <input type="range" id="brush-size" class="control-slider" 
+                   min="10" max="100" value="30">
+          </div>
+          <div class="button-grid-full" style="margin-top: 10px;">
+            <button id="clear-selections" class="control-button danger-button">🗑️ Clear All</button>
+            <button id="invert-selection" class="control-button">🔄 Invert</button>
           </div>
         </div>
       </div>

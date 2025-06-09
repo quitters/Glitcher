@@ -98,6 +98,30 @@ const shapeRandomnessValue = document.getElementById('shape-randomness-value');
 const shapeCountRange = document.getElementById('shape-count');
 const shapeCountValue = document.getElementById('shape-count-value');
 
+// Selection preview
+const selectionPreviewCheckbox = document.getElementById('selection-preview-checkbox');
+
+// Combined method controls
+const combinedControls = document.getElementById('combined-controls');
+const combineColorCheckbox = document.getElementById('combine-color');
+const combineBrightnessCheckbox = document.getElementById('combine-brightness');
+const combineEdgesCheckbox = document.getElementById('combine-edges');
+
+// Selection sensitivity
+const selectionSensitivityRange = document.getElementById('selection-sensitivity');
+const selectionSensitivityValue = document.getElementById('selection-sensitivity-value');
+
+// Interactive tools
+const selectTool = document.getElementById('select-tool');
+const brushTool = document.getElementById('brush-tool');
+const wandTool = document.getElementById('wand-tool');
+const lassoTool = document.getElementById('lasso-tool');
+const brushSizeRange = document.getElementById('brush-size');
+const brushSizeValue = document.getElementById('brush-size-value');
+const clearSelectionsBtn = document.getElementById('clear-selections');
+const invertSelectionBtn = document.getElementById('invert-selection');
+const manualSelectionMode = document.getElementById('manual-selection-mode');
+
 // ========== Global State ==========
 
 let originalImageData  = null;
@@ -131,6 +155,23 @@ let recordedChunks = [];
 // Selection Engine instance
 let selectionEngine = null;
 
+// Selection preview
+let showSelectionPreview = false;
+let selectionPreviewOpacity = 0.3;
+
+// Selection history
+let selectionHistory = [];
+let maxHistorySize = 10;
+
+// Interactive tool state
+let currentTool = 'none';
+let isDrawing = false;
+let selectionMask = null;
+let tempSelection = null;
+let lastMousePos = { x: 0, y: 0 };
+let lassoPath = [];
+let brushCursorPos = { x: 0, y: 0 };
+
 // ========== Advanced Selection Engine ==========
 
 class SelectionEngine {
@@ -149,6 +190,12 @@ class SelectionEngine {
   // Generate selections based on method
   generateSelections(method, config) {
     const selections = [];
+    
+    // Check cache if applicable
+    const cacheKey = this.getCacheKey(method, config);
+    if (this.cache[cacheKey] && this.isCacheValid(method)) {
+      return this.cache[cacheKey];
+    }
     
     switch(method) {
       case 'random':
@@ -174,9 +221,44 @@ class SelectionEngine {
       case 'contentAware':
         selections.push(...this.selectContentAware(config));
         break;
+        
+      case 'combined':
+        selections.push(...this.selectCombined(config));
+        break;
+    }
+    
+    // Cache results for static methods
+    if (this.shouldCache(method)) {
+      this.cache[cacheKey] = selections;
     }
     
     return selections;
+  }
+  
+  // Generate cache key
+  getCacheKey(method, config) {
+    return `${method}_${JSON.stringify(config)}`;
+  }
+  
+  // Check if cache should be used for this method
+  shouldCache(method) {
+    // Don't cache random or organic shapes as they should vary
+    return method !== 'random' && method !== 'organicShapes';
+  }
+  
+  // Check if cache is still valid
+  isCacheValid(method) {
+    // For now, cache is always valid unless cleared
+    return true;
+  }
+  
+  // Clear cache when image changes
+  clearCache() {
+    this.cache = {
+      colorAnalysis: null,
+      brightnessMap: null,
+      edgeMap: null
+    };
   }
 
   // Select regions by color range
@@ -480,6 +562,66 @@ class SelectionEngine {
     
     return [...edges, ...colors];
   }
+  
+  // Combined selection method
+  selectCombined(config) {
+    const selections = [];
+    const maxPerMethod = Math.ceil(config.maxRegions / 3);
+    
+    // Check which methods are enabled
+    const useColor = combineColorCheckbox ? combineColorCheckbox.checked : true;
+    const useBrightness = combineBrightnessCheckbox ? combineBrightnessCheckbox.checked : false;
+    const useEdges = combineEdgesCheckbox ? combineEdgesCheckbox.checked : true;
+    
+    if (useColor) {
+      selections.push(...this.selectByColorRange({ ...config, maxRegions: maxPerMethod }));
+    }
+    
+    if (useBrightness) {
+      selections.push(...this.selectByBrightness({ ...config, maxRegions: maxPerMethod }));
+    }
+    
+    if (useEdges) {
+      selections.push(...this.selectByEdges({ ...config, maxRegions: maxPerMethod }));
+    }
+    
+    // Remove overlapping selections
+    return this.mergeOverlappingSelections(selections).slice(0, config.maxRegions);
+  }
+  
+  // Merge overlapping selections
+  mergeOverlappingSelections(selections) {
+    const merged = [];
+    
+    selections.forEach(sel => {
+      let overlap = false;
+      
+      for (let i = 0; i < merged.length; i++) {
+        const existing = merged[i];
+        
+        // Check for overlap
+        if (sel.x < existing.x + existing.w &&
+            sel.x + sel.w > existing.x &&
+            sel.y < existing.y + existing.h &&
+            sel.y + sel.h > existing.y) {
+          
+          // Merge by expanding the existing selection
+          existing.x = Math.min(existing.x, sel.x);
+          existing.y = Math.min(existing.y, sel.y);
+          existing.w = Math.max(existing.x + existing.w, sel.x + sel.w) - existing.x;
+          existing.h = Math.max(existing.y + existing.h, sel.y + sel.h) - existing.y;
+          overlap = true;
+          break;
+        }
+      }
+      
+      if (!overlap) {
+        merged.push({ ...sel });
+      }
+    });
+    
+    return merged;
+  }
 }
 
 // ========== Setup Event Listeners ==========
@@ -623,6 +765,7 @@ if (selectionMethodSelect) {
     if (brightnessControls) brightnessControls.style.display = 'none';
     if (edgeDetectionControls) edgeDetectionControls.style.display = 'none';
     if (organicShapeControls) organicShapeControls.style.display = 'none';
+    if (combinedControls) combinedControls.style.display = 'none';
     
     // Show relevant controls
     switch(method) {
@@ -637,6 +780,9 @@ if (selectionMethodSelect) {
         break;
       case 'organicShapes':
         if (organicShapeControls) organicShapeControls.style.display = 'block';
+        break;
+      case 'combined':
+        if (combinedControls) combinedControls.style.display = 'block';
         break;
     }
   });
@@ -678,6 +824,116 @@ if (shapeCountRange) {
   });
 }
 
+// Selection preview checkbox
+if (selectionPreviewCheckbox) {
+  selectionPreviewCheckbox.addEventListener('change', () => {
+    showSelectionPreview = selectionPreviewCheckbox.checked;
+  });
+}
+
+// Selection sensitivity
+if (selectionSensitivityRange) {
+  selectionSensitivityRange.addEventListener('input', () => {
+    selectionSensitivityValue.textContent = selectionSensitivityRange.value;
+  });
+}
+
+// Interactive tool buttons
+const toolButtons = [selectTool, brushTool, wandTool, lassoTool];
+
+toolButtons.forEach(button => {
+  if (button) {
+    button.addEventListener('click', () => {
+      const tool = button.getAttribute('data-tool');
+      
+      // Remove active class from all buttons
+      toolButtons.forEach(btn => btn?.classList.remove('active'));
+      
+      // Toggle tool
+      if (currentTool === tool) {
+        currentTool = 'none';
+        canvas.className = '';
+      } else {
+        currentTool = tool;
+        button.classList.add('active');
+        canvas.className = `${tool}-cursor`;
+      }
+      
+      // Initialize selection mask if needed
+      if (currentTool !== 'none' && !selectionMask) {
+        initializeSelectionMask();
+      }
+    });
+  }
+});
+
+// Brush size
+if (brushSizeRange) {
+  brushSizeRange.addEventListener('input', () => {
+    brushSizeValue.textContent = brushSizeRange.value;
+  });
+}
+
+// Clear selections
+if (clearSelectionsBtn) {
+  clearSelectionsBtn.addEventListener('click', () => {
+    clearSelectionMask();
+    activeClumps = [];
+  });
+}
+
+// Invert selection
+if (invertSelectionBtn) {
+  invertSelectionBtn.addEventListener('click', () => {
+    invertSelectionMask();
+  });
+}
+
+// Manual selection mode toggle
+if (manualSelectionMode) {
+  manualSelectionMode.addEventListener('change', () => {
+    const isManual = manualSelectionMode.checked;
+    
+    // Show/hide automatic selection controls
+    const methodElements = [
+      selectionMethodSelect,
+      colorRangeControls,
+      brightnessControls,
+      edgeDetectionControls,
+      organicShapeControls,
+      combinedControls,
+      selectionSensitivityRange?.parentElement
+    ];
+    
+    methodElements.forEach(el => {
+      if (el) {
+        el.style.display = isManual ? 'none' : '';
+      }
+    });
+    
+    // Show/hide interactive tools
+    const interactiveToolsTitle = Array.from(document.querySelectorAll('.group-title')).find(
+      el => el.textContent.includes('Interactive Tools')
+    );
+    const toolsContainer = interactiveToolsTitle?.parentElement;
+    if (toolsContainer) {
+      toolsContainer.style.display = isManual ? 'block' : 'none';
+    }
+    
+    // Clear current selections when switching modes
+    if (isManual) {
+      activeClumps = [];
+      if (!selectionMask) {
+        initializeSelectionMask();
+      }
+    } else {
+      currentTool = 'none';
+      canvas.className = '';
+      toolButtons.forEach(btn => btn?.classList.remove('active'));
+    }
+  });
+}
+
 // Initial UI setup based on default selections
 if (colorEffectSelect) {
   colorEffectSelect.dispatchEvent(new Event('change'));
@@ -716,6 +972,17 @@ audioReactiveCheckbox.addEventListener('change', toggleAudioReactive);
 
 // Batch export
 batchExportBtn.addEventListener('click', batchExport);
+
+// Canvas mouse events for interactive tools
+canvas.addEventListener('mousedown', handleCanvasMouseDown);
+canvas.addEventListener('mousemove', handleCanvasMouseMove);
+canvas.addEventListener('mouseup', handleCanvasMouseUp);
+canvas.addEventListener('mouseleave', handleCanvasMouseLeave);
+
+// Touch events for mobile
+canvas.addEventListener('touchstart', handleCanvasTouchStart, { passive: false });
+canvas.addEventListener('touchmove', handleCanvasTouchMove, { passive: false });
+canvas.addEventListener('touchend', handleCanvasTouchEnd, { passive: false });
 
 // ========== Image Resizing Logic ==========
 
@@ -1006,14 +1273,609 @@ function animate(currentTime) {
 
   // Draw updated
   ctx.putImageData(glitchImageData, 0, 0);
+  
+  // Draw selection preview if enabled
+  if (showSelectionPreview && activeClumps.length > 0) {
+    drawSelectionPreview();
+  }
+  
+  // Draw interactive selection overlay
+  if (currentTool !== 'none') {
+    drawInteractiveSelectionOverlay();
+  }
 
   animationId = requestAnimationFrame(animate);
+}
+
+// ========== Selection Preview Drawing ==========
+
+function drawSelectionPreview() {
+  ctx.save();
+  ctx.fillStyle = `rgba(78, 205, 196, ${selectionPreviewOpacity})`;
+  ctx.strokeStyle = 'rgba(78, 205, 196, 0.8)';
+  ctx.lineWidth = 2;
+  
+  activeClumps.forEach(clump => {
+    // Fill with semi-transparent color
+    ctx.fillRect(clump.x, clump.y, clump.w, clump.h);
+    
+    // Draw border
+    ctx.strokeRect(clump.x, clump.y, clump.w, clump.h);
+  });
+  
+  ctx.restore();
+}
+
+function drawInteractiveSelectionOverlay() {
+  ctx.save();
+  
+  // Draw selection mask
+  if (selectionMask) {
+    ctx.fillStyle = 'rgba(78, 205, 196, 0.3)';
+    
+    // Find connected regions and draw rectangles
+    const visited = new Uint8Array(imgWidth * imgHeight);
+    
+    for (let y = 0; y < imgHeight; y++) {
+      for (let x = 0; x < imgWidth; x++) {
+        const idx = y * imgWidth + x;
+        
+        if (selectionMask[idx] && !visited[idx]) {
+          // Find the extent of this selection region
+          const region = findSelectionRegionBounds(x, y, visited);
+          
+          // Draw rectangle for this region
+          ctx.fillRect(region.x, region.y, region.w, region.h);
+        }
+      }
+    }
+  }
+  
+  // Draw temp selection (for select tool)
+  if (tempSelection && currentTool === 'select' && isDrawing) {
+    ctx.strokeStyle = 'rgba(78, 205, 196, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    
+    const x = Math.min(tempSelection.startX, tempSelection.endX);
+    const y = Math.min(tempSelection.startY, tempSelection.endY);
+    const w = Math.abs(tempSelection.endX - tempSelection.startX);
+    const h = Math.abs(tempSelection.endY - tempSelection.startY);
+    
+    ctx.strokeRect(x, y, w, h);
+    ctx.setLineDash([]);
+  }
+  
+  // Draw lasso path
+  if (lassoPath.length > 1 && currentTool === 'lasso' && isDrawing) {
+    ctx.strokeStyle = 'rgba(78, 205, 196, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    
+    ctx.beginPath();
+    ctx.moveTo(lassoPath[0].x, lassoPath[0].y);
+    
+    for (let i = 1; i < lassoPath.length; i++) {
+      ctx.lineTo(lassoPath[i].x, lassoPath[i].y);
+    }
+    
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  
+  // Draw brush cursor
+  if (currentTool === 'brush' && brushCursorPos.x >= 0 && brushCursorPos.y >= 0) {
+    const brushSize = parseInt(brushSizeRange.value);
+    ctx.strokeStyle = 'rgba(78, 205, 196, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(brushCursorPos.x, brushCursorPos.y, brushSize / 2, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  
+  ctx.restore();
+}
+
+// Helper function to find bounds of a selection region
+function findSelectionRegionBounds(startX, startY, visited) {
+  const stack = [[startX, startY]];
+  const region = {
+    x: startX,
+    y: startY,
+    w: 1,
+    h: 1,
+    minX: startX,
+    maxX: startX,
+    minY: startY,
+    maxY: startY
+  };
+  
+  while (stack.length > 0) {
+    const [x, y] = stack.pop();
+    const idx = y * imgWidth + x;
+    
+    if (x < 0 || x >= imgWidth || y < 0 || y >= imgHeight || 
+        visited[idx] || !selectionMask[idx]) {
+      continue;
+    }
+    
+    visited[idx] = 1;
+    region.minX = Math.min(region.minX, x);
+    region.maxX = Math.max(region.maxX, x);
+    region.minY = Math.min(region.minY, y);
+    region.maxY = Math.max(region.maxY, y);
+    
+    // Add neighbors
+    stack.push([x + 1, y]);
+    stack.push([x - 1, y]);
+    stack.push([x, y + 1]);
+    stack.push([x, y - 1]);
+  }
+  
+  region.x = region.minX;
+  region.y = region.minY;
+  region.w = region.maxX - region.minX + 1;
+  region.h = region.maxY - region.minY + 1;
+  
+  return region;
+}
+
+// ========== Selection History Functions ==========
+
+function saveSelectionHistory(selections, method, config) {
+  selectionHistory.push({
+    timestamp: Date.now(),
+    method: method,
+    config: { ...config },
+    selections: selections.map(s => ({ ...s }))
+  });
+  
+  // Keep history size limited
+  if (selectionHistory.length > maxHistorySize) {
+    selectionHistory.shift();
+  }
+}
+
+function getLastSelection() {
+  if (selectionHistory.length > 0) {
+    return selectionHistory[selectionHistory.length - 1];
+  }
+  return null;
+}
+
+function replayLastSelection() {
+  const lastSelection = getLastSelection();
+  if (lastSelection && selectionEngine) {
+    activeClumps = [];
+    
+    lastSelection.selections.forEach(selection => {
+      const framesRemaining = randomInt(
+        parseInt(minLifetimeRange.value),
+        parseInt(maxLifetimeRange.value)
+      );
+      
+      let clumpDirection = null;
+      if (directionSelect.value === 'random') {
+        const dirs = ['down','up','left','right'];
+        clumpDirection = dirs[randomInt(0, dirs.length - 1)];
+      }
+      
+      activeClumps.push({
+        x: selection.x,
+        y: selection.y,
+        w: selection.w,
+        h: selection.h,
+        framesRemaining,
+        clumpDirection
+      });
+    });
+  }
+}
+
+// ========== Interactive Selection Functions ==========
+
+function initializeSelectionMask() {
+  if (imgWidth > 0 && imgHeight > 0) {
+    selectionMask = new Uint8Array(imgWidth * imgHeight);
+  }
+}
+
+function clearSelectionMask() {
+  if (selectionMask) {
+    selectionMask.fill(0);
+  }
+}
+
+function invertSelectionMask() {
+  if (selectionMask) {
+    for (let i = 0; i < selectionMask.length; i++) {
+      selectionMask[i] = selectionMask[i] ? 0 : 255;
+    }
+    updateSelectionsFromMask();
+  }
+}
+
+function updateSelectionsFromMask() {
+  if (!selectionMask || !selectionEngine) return;
+  
+  // Convert mask to rectangular regions
+  const regions = [];
+  const visited = new Uint8Array(imgWidth * imgHeight);
+  
+  for (let y = 0; y < imgHeight; y++) {
+    for (let x = 0; x < imgWidth; x++) {
+      const idx = y * imgWidth + x;
+      
+      if (selectionMask[idx] && !visited[idx]) {
+        // Find connected region
+        const region = findConnectedRegion(x, y, visited);
+        if (region.pixels > 50) { // Minimum size threshold
+          regions.push({
+            x: region.minX,
+            y: region.minY,
+            w: region.maxX - region.minX,
+            h: region.maxY - region.minY
+          });
+        }
+      }
+    }
+  }
+  
+  // Update active clumps
+  activeClumps = [];
+  regions.forEach(region => {
+    const framesRemaining = randomInt(
+      parseInt(minLifetimeRange.value),
+      parseInt(maxLifetimeRange.value)
+    );
+    
+    let clumpDirection = null;
+    if (directionSelect.value === 'random') {
+      const dirs = ['down','up','left','right'];
+      clumpDirection = dirs[randomInt(0, dirs.length - 1)];
+    }
+    
+    activeClumps.push({
+      ...region,
+      framesRemaining,
+      clumpDirection
+    });
+  });
+}
+
+function findConnectedRegion(startX, startY, visited) {
+  const stack = [[startX, startY]];
+  const region = {
+    pixels: 0,
+    minX: startX,
+    maxX: startX,
+    minY: startY,
+    maxY: startY
+  };
+  
+  while (stack.length > 0) {
+    const [x, y] = stack.pop();
+    const idx = y * imgWidth + x;
+    
+    if (x < 0 || x >= imgWidth || y < 0 || y >= imgHeight || 
+        visited[idx] || !selectionMask[idx]) {
+      continue;
+    }
+    
+    visited[idx] = 1;
+    region.pixels++;
+    region.minX = Math.min(region.minX, x);
+    region.maxX = Math.max(region.maxX, x);
+    region.minY = Math.min(region.minY, y);
+    region.maxY = Math.max(region.maxY, y);
+    
+    // Add neighbors
+    stack.push([x + 1, y]);
+    stack.push([x - 1, y]);
+    stack.push([x, y + 1]);
+    stack.push([x, y - 1]);
+  }
+  
+  return region;
+}
+
+// ========== Canvas Interaction Handlers ==========
+
+function getCanvasCoordinates(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = imgWidth / rect.width;
+  const scaleY = imgHeight / rect.height;
+  
+  return {
+    x: Math.floor((e.clientX - rect.left) * scaleX),
+    y: Math.floor((e.clientY - rect.top) * scaleY)
+  };
+}
+
+function handleCanvasMouseDown(e) {
+  if (currentTool === 'none' || !selectionMask) return;
+  
+  const coords = getCanvasCoordinates(e);
+  isDrawing = true;
+  lastMousePos = coords;
+  
+  switch (currentTool) {
+    case 'select':
+      tempSelection = { startX: coords.x, startY: coords.y, endX: coords.x, endY: coords.y };
+      break;
+      
+    case 'brush':
+      drawBrush(coords.x, coords.y);
+      break;
+      
+    case 'wand':
+      selectSimilarColors(coords.x, coords.y);
+      updateSelectionsFromMask();
+      break;
+      
+    case 'lasso':
+      lassoPath = [coords];
+      break;
+  }
+}
+
+function handleCanvasMouseMove(e) {
+  const coords = getCanvasCoordinates(e);
+  
+  // Update brush cursor
+  if (currentTool === 'brush') {
+    drawBrushCursor(coords.x, coords.y);
+  }
+  
+  if (!isDrawing) return;
+  
+  switch (currentTool) {
+    case 'select':
+      if (tempSelection) {
+        tempSelection.endX = coords.x;
+        tempSelection.endY = coords.y;
+      }
+      break;
+      
+    case 'brush':
+      drawLine(lastMousePos.x, lastMousePos.y, coords.x, coords.y);
+      lastMousePos = coords;
+      break;
+      
+    case 'lasso':
+      lassoPath.push(coords);
+      break;
+  }
+}
+
+function handleCanvasMouseUp(e) {
+  if (!isDrawing) return;
+  
+  isDrawing = false;
+  
+  switch (currentTool) {
+    case 'select':
+      if (tempSelection) {
+        applyRectSelection(tempSelection);
+        tempSelection = null;
+        updateSelectionsFromMask();
+      }
+      break;
+      
+    case 'lasso':
+      if (lassoPath.length > 2) {
+        applyLassoSelection(lassoPath);
+        updateSelectionsFromMask();
+      }
+      lassoPath = [];
+      break;
+  }
+}
+
+function handleCanvasMouseLeave(e) {
+  isDrawing = false;
+}
+
+// Touch event handlers
+function handleCanvasTouchStart(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const mouseEvent = new MouseEvent('mousedown', {
+    clientX: touch.clientX,
+    clientY: touch.clientY
+  });
+  canvas.dispatchEvent(mouseEvent);
+}
+
+function handleCanvasTouchMove(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const mouseEvent = new MouseEvent('mousemove', {
+    clientX: touch.clientX,
+    clientY: touch.clientY
+  });
+  canvas.dispatchEvent(mouseEvent);
+}
+
+function handleCanvasTouchEnd(e) {
+  e.preventDefault();
+  const mouseEvent = new MouseEvent('mouseup');
+  canvas.dispatchEvent(mouseEvent);
+}
+
+// ========== Tool-specific Functions ==========
+
+function drawBrush(x, y) {
+  if (!selectionMask) return;
+  
+  const brushSize = parseInt(brushSizeRange.value);
+  const radius = brushSize / 2;
+  
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      if (dx * dx + dy * dy <= radius * radius) {
+        const px = Math.floor(x + dx);
+        const py = Math.floor(y + dy);
+        
+        if (px >= 0 && px < imgWidth && py >= 0 && py < imgHeight) {
+          selectionMask[py * imgWidth + px] = 255;
+        }
+      }
+    }
+  }
+}
+
+function drawLine(x1, y1, x2, y2) {
+  const dx = Math.abs(x2 - x1);
+  const dy = Math.abs(y2 - y1);
+  const sx = x1 < x2 ? 1 : -1;
+  const sy = y1 < y2 ? 1 : -1;
+  let err = dx - dy;
+  
+  while (true) {
+    drawBrush(x1, y1);
+    
+    if (x1 === x2 && y1 === y2) break;
+    
+    const e2 = 2 * err;
+    if (e2 > -dy) {
+      err -= dy;
+      x1 += sx;
+    }
+    if (e2 < dx) {
+      err += dx;
+      y1 += sy;
+    }
+  }
+}
+
+function applyRectSelection(selection) {
+  if (!selectionMask) return;
+  
+  const minX = Math.min(selection.startX, selection.endX);
+  const maxX = Math.max(selection.startX, selection.endX);
+  const minY = Math.min(selection.startY, selection.endY);
+  const maxY = Math.max(selection.startY, selection.endY);
+  
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      if (x >= 0 && x < imgWidth && y >= 0 && y < imgHeight) {
+        selectionMask[y * imgWidth + x] = 255;
+      }
+    }
+  }
+}
+
+function selectSimilarColors(x, y) {
+  if (!selectionMask || !glitchImageData) return;
+  
+  const idx = (y * imgWidth + x) * 4;
+  const targetR = glitchImageData.data[idx];
+  const targetG = glitchImageData.data[idx + 1];
+  const targetB = glitchImageData.data[idx + 2];
+  
+  const tolerance = 30; // Color tolerance
+  const visited = new Uint8Array(imgWidth * imgHeight);
+  const stack = [[x, y]];
+  
+  while (stack.length > 0) {
+    const [cx, cy] = stack.pop();
+    const cidx = cy * imgWidth + cx;
+    
+    if (cx < 0 || cx >= imgWidth || cy < 0 || cy >= imgHeight || visited[cidx]) {
+      continue;
+    }
+    
+    visited[cidx] = 1;
+    
+    const pidx = cidx * 4;
+    const r = glitchImageData.data[pidx];
+    const g = glitchImageData.data[pidx + 1];
+    const b = glitchImageData.data[pidx + 2];
+    
+    const colorDiff = Math.sqrt(
+      (r - targetR) ** 2 + 
+      (g - targetG) ** 2 + 
+      (b - targetB) ** 2
+    );
+    
+    if (colorDiff <= tolerance) {
+      selectionMask[cidx] = 255;
+      
+      // Add neighbors
+      stack.push([cx + 1, cy]);
+      stack.push([cx - 1, cy]);
+      stack.push([cx, cy + 1]);
+      stack.push([cx, cy - 1]);
+    }
+  }
+}
+
+function applyLassoSelection(path) {
+  if (!selectionMask || path.length < 3) return;
+  
+  // Find bounding box
+  let minX = imgWidth, maxX = 0, minY = imgHeight, maxY = 0;
+  
+  path.forEach(point => {
+    minX = Math.min(minX, point.x);
+    maxX = Math.max(maxX, point.x);
+    minY = Math.min(minY, point.y);
+    maxY = Math.max(maxY, point.y);
+  });
+  
+  // Check each point in bounding box
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      if (isPointInPolygon(x, y, path)) {
+        if (x >= 0 && x < imgWidth && y >= 0 && y < imgHeight) {
+          selectionMask[y * imgWidth + x] = 255;
+        }
+      }
+    }
+  }
+}
+
+function isPointInPolygon(x, y, polygon) {
+  let inside = false;
+  
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y;
+    const xj = polygon[j].x, yj = polygon[j].y;
+    
+    const intersect = ((yi > y) !== (yj > y)) && 
+                     (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    
+    if (intersect) inside = !inside;
+  }
+  
+  return inside;
+}
+
+function drawBrushCursor(x, y) {
+  // Update brush cursor position for drawing in the animation loop
+  brushCursorPos.x = x;
+  brushCursorPos.y = y;
 }
 
 // ========== Core Glitch Functions ==========
 // [Including all the functions from the beta version - clumps, direction shift, spiral, slice, pixel sort]
 
+// Helper function to check if we're in manual selection mode
+function isManualSelectionMode() {
+  return manualSelectionMode && manualSelectionMode.checked;
+}
+
 function spawnNewClumps(intensity, minLife, maxLife) {
+  // Check if manual selection mode is active
+  if (manualSelectionMode && manualSelectionMode.checked) {
+    // In manual mode, selections come from the selection mask
+    if (selectionMask && activeClumps.length === 0) {
+      updateSelectionsFromMask();
+    }
+    return;
+  }
+  
   if (!selectionEngine) {
     // Fallback to random if no selection engine
     const n = getNumClumps(intensity);
@@ -1034,19 +1896,26 @@ function spawnNewClumps(intensity, minLife, maxLife) {
 
   // Use selection engine
   const method = selectionMethodSelect ? selectionMethodSelect.value : 'random';
+  const sensitivity = selectionSensitivityRange ? parseFloat(selectionSensitivityRange.value) : 1.0;
+  
   const config = {
     intensity: intensity,
     targetHue: targetHueRange ? parseInt(targetHueRange.value) : 180,
-    hueTolerance: colorToleranceRange ? parseInt(colorToleranceRange.value) : 30,
-    minRegionSize: minRegionSizeRange ? parseInt(minRegionSizeRange.value) : 100,
+    hueTolerance: colorToleranceRange ? parseInt(colorToleranceRange.value) * sensitivity : 30,
+    minRegionSize: minRegionSizeRange ? parseInt(minRegionSizeRange.value) / sensitivity : 100,
     zone: brightnessZoneSelect ? brightnessZoneSelect.value : 'shadows',
-    threshold: edgeThresholdRange ? parseInt(edgeThresholdRange.value) : 30,
+    threshold: edgeThresholdRange ? parseInt(edgeThresholdRange.value) / sensitivity : 30,
     count: shapeCountRange ? parseInt(shapeCountRange.value) : 3,
     randomness: shapeRandomnessRange ? parseFloat(shapeRandomnessRange.value) : 0.3,
-    maxRegions: getNumClumps(intensity)
+    maxRegions: Math.ceil(getNumClumps(intensity) * sensitivity)
   };
 
   const selections = selectionEngine.generateSelections(method, config);
+  
+  // Save to history
+  if (selections.length > 0) {
+    saveSelectionHistory(selections, method, config);
+  }
   
   // Convert selections to active clumps
   selections.forEach(selection => {
@@ -1140,64 +2009,92 @@ function applyDirectionShift(imageData, clump, speed, globalDir) {
 
 function shiftRectDown(imageData, {x,y,w,h}, shift) {
   const { data, width, height } = imageData;
+  const mask = isManualSelectionMode() ? selectionMask : null;
+  
   for (let row = y + h - 1; row >= y; row--) {
     const destRow = row + shift;
     if (destRow >= height) continue;
     for (let col = x; col < x + w; col++) {
-      const srcIdx = (row * width + col) * 4;
-      const dstIdx = (destRow * width + col) * 4;
-      data[dstIdx]   = data[srcIdx];
-      data[dstIdx+1] = data[srcIdx+1];
-      data[dstIdx+2] = data[srcIdx+2];
-      data[dstIdx+3] = data[srcIdx+3];
+      const maskIdx = row * width + col;
+      
+      // Only shift if pixel is selected (or no mask)
+      if (!mask || mask[maskIdx] === 255) {
+        const srcIdx = (row * width + col) * 4;
+        const dstIdx = (destRow * width + col) * 4;
+        data[dstIdx]   = data[srcIdx];
+        data[dstIdx+1] = data[srcIdx+1];
+        data[dstIdx+2] = data[srcIdx+2];
+        data[dstIdx+3] = data[srcIdx+3];
+      }
     }
   }
 }
 
 function shiftRectUp(imageData, {x,y,w,h}, shift) {
   const { data, width } = imageData;
+  const mask = isManualSelectionMode() ? selectionMask : null;
+  
   for (let row = y; row < y + h; row++) {
     const destRow = row - shift;
     if (destRow < 0) continue;
     for (let col = x; col < x + w; col++) {
-      const srcIdx = (row * width + col) * 4;
-      const dstIdx = (destRow * width + col) * 4;
-      data[dstIdx]   = data[srcIdx];
-      data[dstIdx+1] = data[srcIdx+1];
-      data[dstIdx+2] = data[srcIdx+2];
-      data[dstIdx+3] = data[srcIdx+3];
+      const maskIdx = row * width + col;
+      
+      // Only shift if pixel is selected (or no mask)
+      if (!mask || mask[maskIdx] === 255) {
+        const srcIdx = (row * width + col) * 4;
+        const dstIdx = (destRow * width + col) * 4;
+        data[dstIdx]   = data[srcIdx];
+        data[dstIdx+1] = data[srcIdx+1];
+        data[dstIdx+2] = data[srcIdx+2];
+        data[dstIdx+3] = data[srcIdx+3];
+      }
     }
   }
 }
 
 function shiftRectLeft(imageData, {x,y,w,h}, shift) {
   const { data, width } = imageData;
+  const mask = isManualSelectionMode() ? selectionMask : null;
+  
   for (let row = y; row < y + h; row++) {
     for (let col = x; col < x + w; col++) {
-      const destCol = col - shift;
-      if (destCol < 0) continue;
-      const srcIdx  = (row * width + col) * 4;
-      const dstIdx  = (row * width + destCol) * 4;
-      data[dstIdx]   = data[srcIdx];
-      data[dstIdx+1] = data[srcIdx+1];
-      data[dstIdx+2] = data[srcIdx+2];
-      data[dstIdx+3] = data[srcIdx+3];
+      const maskIdx = row * width + col;
+      
+      // Only shift if pixel is selected (or no mask)
+      if (!mask || mask[maskIdx] === 255) {
+        const destCol = col - shift;
+        if (destCol < 0) continue;
+        const srcIdx  = (row * width + col) * 4;
+        const dstIdx  = (row * width + destCol) * 4;
+        data[dstIdx]   = data[srcIdx];
+        data[dstIdx+1] = data[srcIdx+1];
+        data[dstIdx+2] = data[srcIdx+2];
+        data[dstIdx+3] = data[srcIdx+3];
+      }
     }
   }
 }
 
 function shiftRectRight(imageData, {x,y,w,h}, shift) {
   const { data, width } = imageData;
+  const mask = isManualSelectionMode() ? selectionMask : null;
+  
   for (let row = y; row < y + h; row++) {
     for (let col = x + w - 1; col >= x; col--) {
-      const destCol = col + shift;
-      if (destCol >= width) continue;
-      const srcIdx  = (row * width + col) * 4;
-      const dstIdx  = (row * width + destCol) * 4;
-      data[dstIdx]   = data[srcIdx];
-      data[dstIdx+1] = data[srcIdx+1];
-      data[dstIdx+2] = data[srcIdx+2];
-      data[dstIdx+3] = data[srcIdx+3];
+      const maskIdx = row * width + col;
+      
+      // Only shift if pixel is selected (or no mask)
+      if (!mask || mask[maskIdx] === 255) {
+        const destCol = col + shift;
+        if (destCol >= width) continue;
+        const srcIdx  = (row * width + col) * 4;
+        const dstIdx  = (row * width + destCol) * 4;
+        data[dstIdx]   = data[srcIdx];
+        data[dstIdx+1] = data[srcIdx+1];
+        data[dstIdx+2] = data[srcIdx+2];
+        data[dstIdx+3] = data[srcIdx+3];
+      }
     }
   }
 }
@@ -1211,17 +2108,24 @@ function swirlRectangle(imageData, rect, swirlStrength, swirlType) {
   const { data, width, height } = imageData;
   if (x<0 || y<0 || x+w>width || y+h>height) return;
 
+  const mask = isManualSelectionMode() ? selectionMask : null;
   const subregion = new Uint8ClampedArray(w * h * 4);
+  
+  // Copy only selected pixels to subregion
   for (let row=0; row<h; row++) {
     for (let col=0; col<w; col++) {
       const srcX = x + col;
       const srcY = y + row;
-      const srcIdx = (srcY * width + srcX) * 4;
-      const dstIdx = (row * w + col) * 4;
-      subregion[dstIdx]   = data[srcIdx];
-      subregion[dstIdx+1] = data[srcIdx+1];
-      subregion[dstIdx+2] = data[srcIdx+2];
-      subregion[dstIdx+3] = data[srcIdx+3];
+      const maskIdx = srcY * width + srcX;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const srcIdx = (srcY * width + srcX) * 4;
+        const dstIdx = (row * w + col) * 4;
+        subregion[dstIdx]   = data[srcIdx];
+        subregion[dstIdx+1] = data[srcIdx+1];
+        subregion[dstIdx+2] = data[srcIdx+2];
+        subregion[dstIdx+3] = data[srcIdx+3];
+      }
     }
   }
 
@@ -1231,37 +2135,48 @@ function swirlRectangle(imageData, rect, swirlStrength, swirlType) {
 
   for (let row=0; row<h; row++) {
     for (let col=0; col<w; col++) {
-      const dx = col - centerX;
-      const dy = row - centerY;
-      const r  = Math.sqrt(dx*dx + dy*dy);
-      const theta = Math.atan2(dy, dx);
+      const srcX = x + col;
+      const srcY = y + row;
+      const maskIdx = srcY * width + srcX;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const dx = col - centerX;
+        const dy = row - centerY;
+        const r  = Math.sqrt(dx*dx + dy*dy);
+        const theta = Math.atan2(dy, dx);
 
-      const swirlAngle = computeSwirlAngle(r, maxR, swirlStrength, swirlType);
-      const newTheta   = theta + swirlAngle;
+        const swirlAngle = computeSwirlAngle(r, maxR, swirlStrength, swirlType);
+        const newTheta   = theta + swirlAngle;
 
-      const nx = Math.round(centerX + r*Math.cos(newTheta));
-      const ny = Math.round(centerY + r*Math.sin(newTheta));
-      if (nx>=0 && nx<w && ny>=0 && ny<h) {
-        const srcIdx  = (row*w + col)*4;
-        const dstIdx  = (ny*w + nx)*4;
-        swirlBuffer[dstIdx]   = subregion[srcIdx];
-        swirlBuffer[dstIdx+1] = subregion[srcIdx+1];
-        swirlBuffer[dstIdx+2] = subregion[srcIdx+2];
-        swirlBuffer[dstIdx+3] = subregion[srcIdx+3];
+        const nx = Math.round(centerX + r*Math.cos(newTheta));
+        const ny = Math.round(centerY + r*Math.sin(newTheta));
+        if (nx>=0 && nx<w && ny>=0 && ny<h) {
+          const srcIdx  = (row*w + col)*4;
+          const dstIdx  = (ny*w + nx)*4;
+          swirlBuffer[dstIdx]   = subregion[srcIdx];
+          swirlBuffer[dstIdx+1] = subregion[srcIdx+1];
+          swirlBuffer[dstIdx+2] = subregion[srcIdx+2];
+          swirlBuffer[dstIdx+3] = subregion[srcIdx+3];
+        }
       }
     }
   }
 
+  // Write back only to selected pixels
   for (let row=0; row<h; row++) {
     for (let col=0; col<w; col++) {
-      const srcIdx = (row*w + col)*4;
       const dstX = x + col;
       const dstY = y + row;
-      const dstIdx = (dstY * width + dstX)*4;
-      data[dstIdx]   = swirlBuffer[srcIdx];
-      data[dstIdx+1] = swirlBuffer[srcIdx+1];
-      data[dstIdx+2] = swirlBuffer[srcIdx+2];
-      data[dstIdx+3] = swirlBuffer[srcIdx+3];
+      const maskIdx = dstY * width + dstX;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const srcIdx = (row*w + col)*4;
+        const dstIdx = (dstY * width + dstX)*4;
+        data[dstIdx]   = swirlBuffer[srcIdx];
+        data[dstIdx+1] = swirlBuffer[srcIdx+1];
+        data[dstIdx+2] = swirlBuffer[srcIdx+2];
+        data[dstIdx+3] = swirlBuffer[srcIdx+3];
+      }
     }
   }
 }
@@ -1310,6 +2225,7 @@ function applySliceGlitch(imageData, sliceType, colorMax) {
 
 function horizontalSliceGlitch(imageData, colorMax) {
   const { data, width, height } = imageData;
+  const mask = isManualSelectionMode() ? selectionMask : null;
   const sliceHeight = randomInt(1, Math.floor(height/6));
   const startY = randomInt(0, height - sliceHeight);
   const direction = Math.random()<0.5 ? -1 : 1;
@@ -1319,27 +2235,35 @@ function horizontalSliceGlitch(imageData, colorMax) {
   for (let row=startY; row<startY+sliceHeight; row++) {
     if (direction === 1) {
       for (let col=width-1; col>=0; col--) {
-        const srcIdx  = (row*width + col)*4;
-        const dstCol  = col + offset;
-        if (dstCol>=width) continue;
-        const dstIdx  = (row*width + dstCol)*4;
+        const maskIdx = row * width + col;
+        
+        if (!mask || mask[maskIdx] === 255) {
+          const srcIdx  = (row*width + col)*4;
+          const dstCol  = col + offset;
+          if (dstCol>=width) continue;
+          const dstIdx  = (row*width + dstCol)*4;
 
-        data[dstIdx]   = clampColor(data[srcIdx] + colorOffset);
-        data[dstIdx+1] = clampColor(data[srcIdx+1] + colorOffset);
-        data[dstIdx+2] = clampColor(data[srcIdx+2] + colorOffset);
-        data[dstIdx+3] = data[srcIdx+3];
+          data[dstIdx]   = clampColor(data[srcIdx] + colorOffset);
+          data[dstIdx+1] = clampColor(data[srcIdx+1] + colorOffset);
+          data[dstIdx+2] = clampColor(data[srcIdx+2] + colorOffset);
+          data[dstIdx+3] = data[srcIdx+3];
+        }
       }
     } else {
       for (let col=0; col<width; col++) {
-        const srcIdx  = (row*width + col)*4;
-        const dstCol  = col - offset;
-        if (dstCol<0) continue;
-        const dstIdx  = (row*width + dstCol)*4;
+        const maskIdx = row * width + col;
+        
+        if (!mask || mask[maskIdx] === 255) {
+          const srcIdx  = (row*width + col)*4;
+          const dstCol  = col - offset;
+          if (dstCol<0) continue;
+          const dstIdx  = (row*width + dstCol)*4;
 
-        data[dstIdx]   = clampColor(data[srcIdx] + colorOffset);
-        data[dstIdx+1] = clampColor(data[srcIdx+1] + colorOffset);
-        data[dstIdx+2] = clampColor(data[srcIdx+2] + colorOffset);
-        data[dstIdx+3] = data[srcIdx+3];
+          data[dstIdx]   = clampColor(data[srcIdx] + colorOffset);
+          data[dstIdx+1] = clampColor(data[srcIdx+1] + colorOffset);
+          data[dstIdx+2] = clampColor(data[srcIdx+2] + colorOffset);
+          data[dstIdx+3] = data[srcIdx+3];
+        }
       }
     }
   }
@@ -1347,6 +2271,7 @@ function horizontalSliceGlitch(imageData, colorMax) {
 
 function verticalSliceGlitch(imageData, colorMax) {
   const { data, width, height } = imageData;
+  const mask = isManualSelectionMode() ? selectionMask : null;
   const sliceWidth = randomInt(1, Math.floor(width/6));
   const startX = randomInt(0, width - sliceWidth);
   const direction = Math.random()<0.5 ? -1 : 1;
@@ -1356,27 +2281,35 @@ function verticalSliceGlitch(imageData, colorMax) {
   for (let col=startX; col<startX+sliceWidth; col++) {
     if (direction === 1) {
       for (let row=height-1; row>=0; row--) {
-        const srcIdx  = (row*width + col)*4;
-        const dstRow  = row + offset;
-        if (dstRow>=height) continue;
-        const dstIdx  = (dstRow*width + col)*4;
+        const maskIdx = row * width + col;
+        
+        if (!mask || mask[maskIdx] === 255) {
+          const srcIdx  = (row*width + col)*4;
+          const dstRow  = row + offset;
+          if (dstRow>=height) continue;
+          const dstIdx  = (dstRow*width + col)*4;
 
-        data[dstIdx]   = clampColor(data[srcIdx] + colorOffset);
-        data[dstIdx+1] = clampColor(data[srcIdx+1] + colorOffset);
-        data[dstIdx+2] = clampColor(data[srcIdx+2] + colorOffset);
-        data[dstIdx+3] = data[srcIdx+3];
+          data[dstIdx]   = clampColor(data[srcIdx] + colorOffset);
+          data[dstIdx+1] = clampColor(data[srcIdx+1] + colorOffset);
+          data[dstIdx+2] = clampColor(data[srcIdx+2] + colorOffset);
+          data[dstIdx+3] = data[srcIdx+3];
+        }
       }
     } else {
       for (let row=0; row<height; row++) {
-        const srcIdx  = (row*width + col)*4;
-        const dstRow  = row - offset;
-        if (dstRow<0) continue;
-        const dstIdx  = (dstRow*width + col)*4;
+        const maskIdx = row * width + col;
+        
+        if (!mask || mask[maskIdx] === 255) {
+          const srcIdx  = (row*width + col)*4;
+          const dstRow  = row - offset;
+          if (dstRow<0) continue;
+          const dstIdx  = (dstRow*width + col)*4;
 
-        data[dstIdx]   = clampColor(data[srcIdx] + colorOffset);
-        data[dstIdx+1] = clampColor(data[srcIdx+1] + colorOffset);
-        data[dstIdx+2] = clampColor(data[srcIdx+2] + colorOffset);
-        data[dstIdx+3] = data[srcIdx+3];
+          data[dstIdx]   = clampColor(data[srcIdx] + colorOffset);
+          data[dstIdx+1] = clampColor(data[srcIdx+1] + colorOffset);
+          data[dstIdx+2] = clampColor(data[srcIdx+2] + colorOffset);
+          data[dstIdx+3] = data[srcIdx+3];
+        }
       }
     }
   }
@@ -1414,87 +2347,127 @@ function applyPixelSort(imageData, sortType) {
 
 function sortColumnsByBrightness(imageData) {
   const { data, width, height } = imageData;
+  const mask = isManualSelectionMode() ? selectionMask : null;
+  
   for (let x=0; x<width; x++) {
     const column = [];
+    
+    // Collect only selected pixels
     for (let y=0; y<height; y++) {
-      const idx = (y*width + x)*4;
-      const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
-      const bright = 0.2126*r + 0.7152*g + 0.0722*b;
-      column.push({ r, g, b, a, value: bright });
+      const maskIdx = y * width + x;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const idx = (y*width + x)*4;
+        const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+        const bright = 0.2126*r + 0.7152*g + 0.0722*b;
+        column.push({ r, g, b, a, value: bright, y: y });
+      }
     }
+    
+    // Sort and write back only to selected positions
     column.sort((p,q) => p.value - q.value);
-    for (let y=0; y<height; y++) {
-      const idx = (y*width + x)*4;
-      data[idx]   = column[y].r;
-      data[idx+1] = column[y].g;
-      data[idx+2] = column[y].b;
-      data[idx+3] = column[y].a;
-    }
+    column.forEach((pixel, i) => {
+      const idx = (pixel.y*width + x)*4;
+      data[idx]   = column[i].r;
+      data[idx+1] = column[i].g;
+      data[idx+2] = column[i].b;
+      data[idx+3] = column[i].a;
+    });
   }
 }
 
 function sortColumnsByHue(imageData) {
   const { data, width, height } = imageData;
+  const mask = isManualSelectionMode() ? selectionMask : null;
+  
   for (let x=0; x<width; x++) {
     const column = [];
+    
+    // Collect only selected pixels
     for (let y=0; y<height; y++) {
-      const idx = (y*width + x)*4;
-      const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
-      const hue = rgbToHue(r, g, b);
-      column.push({ r, g, b, a, value: hue });
+      const maskIdx = y * width + x;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const idx = (y*width + x)*4;
+        const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+        const hue = rgbToHue(r, g, b);
+        column.push({ r, g, b, a, value: hue, y: y });
+      }
     }
+    
+    // Sort and write back only to selected positions
     column.sort((p,q) => p.value - q.value);
-    for (let y=0; y<height; y++) {
-      const idx = (y*width + x)*4;
-      data[idx]   = column[y].r;
-      data[idx+1] = column[y].g;
-      data[idx+2] = column[y].b;
-      data[idx+3] = column[y].a;
-    }
+    column.forEach((pixel, i) => {
+      const idx = (pixel.y*width + x)*4;
+      data[idx]   = column[i].r;
+      data[idx+1] = column[i].g;
+      data[idx+2] = column[i].b;
+      data[idx+3] = column[i].a;
+    });
   }
 }
 
 function sortRowsByBrightness(imageData) {
   const { data, width, height } = imageData;
+  const mask = isManualSelectionMode() ? selectionMask : null;
+  
   for (let y=0; y<height; y++) {
     const rowPixels = [];
     const rowStart = y * width * 4;
+    
+    // Collect only selected pixels
     for (let x=0; x<width; x++) {
-      const idx = rowStart + x*4;
-      const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
-      const bright = 0.2126*r + 0.7152*g + 0.0722*b;
-      rowPixels.push({ r, g, b, a, value: bright });
+      const maskIdx = y * width + x;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const idx = rowStart + x*4;
+        const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+        const bright = 0.2126*r + 0.7152*g + 0.0722*b;
+        rowPixels.push({ r, g, b, a, value: bright, x: x });
+      }
     }
+    
+    // Sort and write back only to selected positions
     rowPixels.sort((p,q) => p.value - q.value);
-    for (let x=0; x<width; x++) {
-      const idx = rowStart + x*4;
-      data[idx]   = rowPixels[x].r;
-      data[idx+1] = rowPixels[x].g;
-      data[idx+2] = rowPixels[x].b;
-      data[idx+3] = rowPixels[x].a;
-    }
+    rowPixels.forEach((pixel, i) => {
+      const idx = (y * width + pixel.x)*4;
+      data[idx]   = rowPixels[i].r;
+      data[idx+1] = rowPixels[i].g;
+      data[idx+2] = rowPixels[i].b;
+      data[idx+3] = rowPixels[i].a;
+    });
   }
 }
 
 function sortRowsByHue(imageData) {
   const { data, width, height } = imageData;
+  const mask = isManualSelectionMode() ? selectionMask : null;
+  
   for (let y=0; y<height; y++) {
     const rowPixels = [];
     const rowStart = y * width * 4;
+    
+    // Collect only selected pixels
     for (let x=0; x<width; x++) {
-      const idx = rowStart + x*4;
-      const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
-      const hue = rgbToHue(r, g, b);
-      rowPixels.push({ r, g, b, a, value: hue });
+      const maskIdx = y * width + x;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const idx = rowStart + x*4;
+        const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+        const hue = rgbToHue(r, g, b);
+        rowPixels.push({ r, g, b, a, value: hue, x: x });
+      }
     }
+    
+    // Sort and write back only to selected positions
     rowPixels.sort((p,q) => p.value - q.value);
-    for (let x=0; x<width; x++) {
-      const idx = rowStart + x*4;
-      data[idx]   = rowPixels[x].r;
-      data[idx+1] = rowPixels[x].g;
-      data[idx+2] = rowPixels[x].b;
-      data[idx+3] = rowPixels[x].a;
-    }
+    rowPixels.forEach((pixel, i) => {
+      const idx = (y * width + pixel.x)*4;
+      data[idx]   = rowPixels[i].r;
+      data[idx+1] = rowPixels[i].g;
+      data[idx+2] = rowPixels[i].b;
+      data[idx+3] = rowPixels[i].a;
+    });
   }
 }
 
@@ -1515,41 +2488,59 @@ function randomLineSort(imageData) {
 
 function sortOneRowByBrightness(imageData, y) {
   const { data, width } = imageData;
+  const mask = isManualSelectionMode() ? selectionMask : null;
   const rowStart = y * width * 4;
   const rowPixels = [];
+  
+  // Collect only selected pixels
   for (let x=0; x<width; x++) {
-    const idx = rowStart + x*4;
-    const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
-    const bright = 0.2126*r + 0.7152*g + 0.0722*b;
-    rowPixels.push({ r, g, b, a, bright });
+    const maskIdx = y * width + x;
+    
+    if (!mask || mask[maskIdx] === 255) {
+      const idx = rowStart + x*4;
+      const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+      const bright = 0.2126*r + 0.7152*g + 0.0722*b;
+      rowPixels.push({ r, g, b, a, bright, x: x });
+    }
   }
+  
+  // Sort and write back only to selected positions
   rowPixels.sort((p,q) => p.bright - q.bright);
-  for (let x=0; x<width; x++) {
-    const idx = rowStart + x*4;
-    data[idx]   = rowPixels[x].r;
-    data[idx+1] = rowPixels[x].g;
-    data[idx+2] = rowPixels[x].b;
-    data[idx+3] = rowPixels[x].a;
-  }
+  rowPixels.forEach((pixel, i) => {
+    const idx = (y * width + pixel.x)*4;
+    data[idx]   = rowPixels[i].r;
+    data[idx+1] = rowPixels[i].g;
+    data[idx+2] = rowPixels[i].b;
+    data[idx+3] = rowPixels[i].a;
+  });
 }
 
 function sortOneColumnByBrightness(imageData, col) {
   const { data, width, height } = imageData;
+  const mask = isManualSelectionMode() ? selectionMask : null;
   const column = [];
+  
+  // Collect only selected pixels
   for (let y=0; y<height; y++) {
-    const idx = (y*width + col)*4;
-    const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
-    const bright = 0.2126*r + 0.7152*g + 0.0722*b;
-    column.push({ r, g, b, a, bright });
+    const maskIdx = y * width + col;
+    
+    if (!mask || mask[maskIdx] === 255) {
+      const idx = (y*width + col)*4;
+      const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+      const bright = 0.2126*r + 0.7152*g + 0.0722*b;
+      column.push({ r, g, b, a, bright, y: y });
+    }
   }
+  
+  // Sort and write back only to selected positions
   column.sort((p,q) => p.bright - q.bright);
-  for (let y=0; y<height; y++) {
-    const idx = (y*width + col)*4;
-    data[idx]   = column[y].r;
-    data[idx+1] = column[y].g;
-    data[idx+2] = column[y].b;
-    data[idx+3] = column[y].a;
-  }
+  column.forEach((pixel, i) => {
+    const idx = (pixel.y*width + col)*4;
+    data[idx]   = column[i].r;
+    data[idx+1] = column[i].g;
+    data[idx+2] = column[i].b;
+    data[idx+3] = column[i].a;
+  });
 }
 
 function diagonalSort(imageData) {
@@ -1792,77 +2783,111 @@ function hueShift(data, width, height, strength) {
   // 8/100 = 0.08, so we multiply by 0.08 to get the same effect at max
   const scaledStrength = strength * 0.08;
   const shift = scaledStrength * 360;
+  const mask = isManualSelectionMode() ? selectionMask : null;
   
-  for (let i = 0; i < data.length; i += 4) {
-    const [h, s, l] = rgbToHsl(data[i], data[i + 1], data[i + 2]);
-    const newH = (h + shift) % 360;
-    const [r, g, b] = hslToRgb(newH, s, l);
-    
-    data[i] = r;
-    data[i + 1] = g;
-    data[i + 2] = b;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const maskIdx = y * width + x;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const i = (y * width + x) * 4;
+        const [h, s, l] = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+        const newH = (h + shift) % 360;
+        const [r, g, b] = hslToRgb(newH, s, l);
+        
+        data[i] = r;
+        data[i + 1] = g;
+        data[i + 2] = b;
+      }
+    }
   }
 }
 
 function saturationBoost(data, width, height, strength) {
   const boost = 1 + strength * 2;
+  const mask = isManualSelectionMode() ? selectionMask : null;
   
-  for (let i = 0; i < data.length; i += 4) {
-    const [h, s, l] = rgbToHsl(data[i], data[i + 1], data[i + 2]);
-    const newS = Math.min(s * boost, 1);
-    const [r, g, b] = hslToRgb(h, newS, l);
-    
-    data[i] = r;
-    data[i + 1] = g;
-    data[i + 2] = b;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const maskIdx = y * width + x;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const i = (y * width + x) * 4;
+        const [h, s, l] = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+        const newS = Math.min(s * boost, 1);
+        const [r, g, b] = hslToRgb(h, newS, l);
+        
+        data[i] = r;
+        data[i + 1] = g;
+        data[i + 2] = b;
+      }
+    }
   }
 }
 
 
 
 function vintageEffect(data, width, height, strength) {
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    
-    const newR = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189));
-    const newG = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168));
-    const newB = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
-    
-    data[i] = r * (1 - strength) + newR * strength;
-    data[i + 1] = g * (1 - strength) + newG * strength;
-    data[i + 2] = b * (1 - strength) + newB * strength;
+  const mask = isManualSelectionMode() ? selectionMask : null;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const maskIdx = y * width + x;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const i = (y * width + x) * 4;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        
+        const newR = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189));
+        const newG = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168));
+        const newB = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
+        
+        data[i] = r * (1 - strength) + newR * strength;
+        data[i + 1] = g * (1 - strength) + newG * strength;
+        data[i + 2] = b * (1 - strength) + newB * strength;
+      }
+    }
   }
 }
 
 function invertColors(data, width, height, inversionType) {
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    // Alpha channel (data[i+3]) is usually not inverted
+  const mask = isManualSelectionMode() ? selectionMask : null;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const maskIdx = y * width + x;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const i = (y * width + x) * 4;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        // Alpha channel (data[i+3]) is usually not inverted
 
-    switch (inversionType) {
-      case 'full_rgb':
-        data[i] = 255 - r;
-        data[i + 1] = 255 - g;
-        data[i + 2] = 255 - b;
-        break;
-      case 'red_only':
-        data[i] = 255 - r;
-        break;
-      case 'green_only':
-        data[i + 1] = 255 - g;
-        break;
-      case 'blue_only':
-        data[i + 2] = 255 - b;
-        break;
-      default: // Default to full RGB if type is unknown
-        data[i] = 255 - r;
-        data[i + 1] = 255 - g;
-        data[i + 2] = 255 - b;
-        break;
+        switch (inversionType) {
+          case 'full_rgb':
+            data[i] = 255 - r;
+            data[i + 1] = 255 - g;
+            data[i + 2] = 255 - b;
+            break;
+          case 'red_only':
+            data[i] = 255 - r;
+            break;
+          case 'green_only':
+            data[i + 1] = 255 - g;
+            break;
+          case 'blue_only':
+            data[i + 2] = 255 - b;
+            break;
+          default: // Default to full RGB if type is unknown
+            data[i] = 255 - r;
+            data[i + 1] = 255 - g;
+            data[i + 2] = 255 - b;
+            break;
+        }
+      }
     }
   }
 }
@@ -1891,11 +2916,22 @@ function applyDatamosh(imageData, effectType, intensity) {
 
 function randomByteCorruption(data, strength) {
   const corruptionRate = strength * 0.01;
-  for (let i = 0; i < data.length; i += 4) {
-    if (Math.random() < corruptionRate) {
-      data[i] = Math.random() * 255;
-      data[i + 1] = Math.random() * 255;
-      data[i + 2] = Math.random() * 255;
+  const mask = isManualSelectionMode() ? selectionMask : null;
+  const width = imgWidth;
+  const height = imgHeight;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const maskIdx = y * width + x;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const i = (y * width + x) * 4;
+        if (Math.random() < corruptionRate) {
+          data[i] = Math.random() * 255;
+          data[i + 1] = Math.random() * 255;
+          data[i + 2] = Math.random() * 255;
+        }
+      }
     }
   }
 }
@@ -1903,23 +2939,34 @@ function randomByteCorruption(data, strength) {
 function bitShiftCorruption(data, strength) {
   // New: strength 0 = no effect, strength 1 = full 1-bit shift
   // For 0 < strength < 1, blend original and shifted values
-  for (let i = 0; i < data.length; i += 4) {
-    if (strength >= 1) {
-      // Full 1-bit shift
-      data[i]     = ((data[i] << 1) | (data[i] >> 7)) & 255; // Red
-      data[i + 1] = ((data[i + 1] >> 1) | (data[i + 1] << 7)) & 255; // Green
-      data[i + 2] = ((data[i + 2] << 1) | (data[i + 2] >> 7)) & 255; // Blue
-    } else if (strength > 0) {
-      // Blend original and shifted for subtle effect
-      const r = data[i], g = data[i+1], b = data[i+2];
-      const rShift = ((r << 1) | (r >> 7)) & 255;
-      const gShift = ((g >> 1) | (g << 7)) & 255;
-      const bShift = ((b << 1) | (b >> 7)) & 255;
-      data[i]     = Math.round(r * (1 - strength) + rShift * strength);
-      data[i + 1] = Math.round(g * (1 - strength) + gShift * strength);
-      data[i + 2] = Math.round(b * (1 - strength) + bShift * strength);
+  const mask = isManualSelectionMode() ? selectionMask : null;
+  const width = imgWidth;
+  const height = imgHeight;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const maskIdx = y * width + x;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const i = (y * width + x) * 4;
+        if (strength >= 1) {
+          // Full 1-bit shift
+          data[i]     = ((data[i] << 1) | (data[i] >> 7)) & 255; // Red
+          data[i + 1] = ((data[i + 1] >> 1) | (data[i + 1] << 7)) & 255; // Green
+          data[i + 2] = ((data[i + 2] << 1) | (data[i + 2] >> 7)) & 255; // Blue
+        } else if (strength > 0) {
+          // Blend original and shifted for subtle effect
+          const r = data[i], g = data[i+1], b = data[i+2];
+          const rShift = ((r << 1) | (r >> 7)) & 255;
+          const gShift = ((g >> 1) | (g << 7)) & 255;
+          const bShift = ((b << 1) | (b >> 7)) & 255;
+          data[i]     = Math.round(r * (1 - strength) + rShift * strength);
+          data[i + 1] = Math.round(g * (1 - strength) + gShift * strength);
+          data[i + 2] = Math.round(b * (1 - strength) + bShift * strength);
+        }
+        // else, strength == 0: do nothing
+      }
     }
-    // else, strength == 0: do nothing
   }
 }
 
