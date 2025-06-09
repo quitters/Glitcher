@@ -5,10 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "vercel-build": "vite build",
-    "start": "vite preview --port $PORT"
+    "build": "vite build --base=./",
+    "preview": "vite preview"
   },
   "devDependencies": {
     "vite": "^5.0.0"
