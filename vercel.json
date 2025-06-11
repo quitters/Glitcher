@@ -2,16 +2,16 @@
   "version": 2,
   "builds": [
     {
-      "src": "glitcherIndex.html",
+      "src": "index.html",
       "use": "@vercel/static"
     },
     {
-      "src": "glitcher.js",
+      "src": "main.js",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     { "handle": "filesystem" },
-    { "src": "/.*", "dest": "/glitcherIndex.html" }
+    { "src": "/.*", "dest": "/index.html" }
   ]
 }

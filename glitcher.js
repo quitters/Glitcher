@@ -2972,31 +2972,45 @@ function bitShiftCorruption(data, strength) {
 
 function compressionArtifacts(data, width, height, strength) {
   const blockSize = Math.max(2, Math.floor(8 * strength));
+  const mask = isManualSelectionMode() ? selectionMask : null;
   
   for (let y = 0; y < height; y += blockSize) {
     for (let x = 0; x < width; x += blockSize) {
       let r = 0, g = 0, b = 0, count = 0;
+      let hasMaskedPixel = false;
       
+      // First pass: check if any pixel in this block is selected
       for (let by = y; by < Math.min(y + blockSize, height); by++) {
         for (let bx = x; bx < Math.min(x + blockSize, width); bx++) {
-          const idx = (by * width + bx) * 4;
-          r += data[idx];
-          g += data[idx + 1];
-          b += data[idx + 2];
-          count++;
+          const maskIdx = by * width + bx;
+          if (!mask || mask[maskIdx] === 255) {
+            hasMaskedPixel = true;
+            const idx = (by * width + bx) * 4;
+            r += data[idx];
+            g += data[idx + 1];
+            b += data[idx + 2];
+            count++;
+          }
         }
       }
       
-      r = Math.floor(r / count);
-      g = Math.floor(g / count);
-      b = Math.floor(b / count);
-      
-      for (let by = y; by < Math.min(y + blockSize, height); by++) {
-        for (let bx = x; bx < Math.min(x + blockSize, width); bx++) {
-          const idx = (by * width + bx) * 4;
-          data[idx] = r;
-          data[idx + 1] = g;
-          data[idx + 2] = b;
+      // Only process if block contains selected pixels
+      if (hasMaskedPixel && count > 0) {
+        r = Math.floor(r / count);
+        g = Math.floor(g / count);
+        b = Math.floor(b / count);
+        
+        // Second pass: apply averaged color only to selected pixels
+        for (let by = y; by < Math.min(y + blockSize, height); by++) {
+          for (let bx = x; bx < Math.min(x + blockSize, width); bx++) {
+            const maskIdx = by * width + bx;
+            if (!mask || mask[maskIdx] === 255) {
+              const idx = (by * width + bx) * 4;
+              data[idx] = r;
+              data[idx + 1] = g;
+              data[idx + 2] = b;
+            }
+          }
         }
       }
     }
@@ -3005,13 +3019,18 @@ function compressionArtifacts(data, width, height, strength) {
 
 function scanlineEffect(data, width, height, strength) {
   const lineSpacing = Math.max(1, Math.floor(10 - strength * 8));
+  const mask = isManualSelectionMode() ? selectionMask : null;
   
   for (let y = 0; y < height; y += lineSpacing * 2) {
     for (let x = 0; x < width; x++) {
-      const idx = (y * width + x) * 4;
-      data[idx] *= 0.3;
-      data[idx + 1] *= 0.3;
-      data[idx + 2] *= 0.3;
+      const maskIdx = y * width + x;
+      
+      if (!mask || mask[maskIdx] === 255) {
+        const idx = (y * width + x) * 4;
+        data[idx] *= 0.3;
+        data[idx + 1] *= 0.3;
+        data[idx + 2] *= 0.3;
+      }
     }
   }
 }
