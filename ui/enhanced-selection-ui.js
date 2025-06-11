@@ -26,6 +26,15 @@ export class EnhancedSelectionUI {
     this.setupKeyboardShortcuts();
     this.setupEnhancedUI();
     
+    // Initialize method controls visibility
+    this.showMethodControls(this.currentSelectionMethod);
+    
+    // Hide interactive tools by default (only show in manual mode)
+    const toolsContainer = this.findInteractiveToolsContainer();
+    if (toolsContainer) {
+      toolsContainer.style.display = 'none';
+    }
+    
     console.log('✨ Enhanced Selection UI initialized');
     this.showNotification('Enhanced selection system loaded! Use Ctrl+R/B/W/L for quick tool access', 'success', 4000);
   }
@@ -82,6 +91,89 @@ export class EnhancedSelectionUI {
     if (brushSizeRange) {
       brushSizeRange.addEventListener('input', (e) => {
         this.handleBrushSizeChange(parseInt(e.target.value));
+      });
+    }
+    
+    // Method-specific controls
+    this.setupMethodSpecificControls();
+  }
+  
+  setupMethodSpecificControls() {
+    // Random controls
+    const intensitySelect = document.getElementById('intensity-select');
+    if (intensitySelect) {
+      intensitySelect.addEventListener('change', (e) => {
+        const displayMap = { 'medium': 'Medium', 'large': 'Large', 'extraLarge': 'Extra Large' };
+        document.getElementById('intensity-display').textContent = displayMap[e.target.value] || 'Medium';
+      });
+    }
+    
+    const concurrentSelections = document.getElementById('concurrent-selections');
+    if (concurrentSelections) {
+      concurrentSelections.addEventListener('input', (e) => {
+        document.getElementById('concurrent-selections-value').textContent = e.target.value;
+      });
+    }
+    
+    // Organic intensity controls
+    const organicIntensitySelect = document.getElementById('organic-intensity-select');
+    if (organicIntensitySelect) {
+      organicIntensitySelect.addEventListener('change', (e) => {
+        const displayMap = { 'medium': 'Medium', 'large': 'Large', 'extraLarge': 'Extra Large' };
+        document.getElementById('organic-intensity-display').textContent = displayMap[e.target.value] || 'Medium';
+      });
+    }
+    
+    // Color Range controls
+    const targetHue = document.getElementById('target-hue');
+    if (targetHue) {
+      targetHue.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        document.getElementById('target-hue-value').textContent = value;
+        this.updateColorPreview();
+      });
+    }
+    
+    const colorTolerance = document.getElementById('color-tolerance');
+    if (colorTolerance) {
+      colorTolerance.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        document.getElementById('color-tolerance-value').textContent = value;
+        this.updateColorPreview();
+      });
+    }
+    
+    const minRegionSize = document.getElementById('min-region-size');
+    if (minRegionSize) {
+      minRegionSize.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        document.getElementById('min-region-size-value').textContent = value;
+      });
+    }
+    
+    // Edge Detection controls
+    const edgeThreshold = document.getElementById('edge-threshold');
+    if (edgeThreshold) {
+      edgeThreshold.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        document.getElementById('edge-threshold-value').textContent = value;
+      });
+    }
+    
+    // Organic Shape controls
+    const shapeRandomness = document.getElementById('shape-randomness');
+    if (shapeRandomness) {
+      shapeRandomness.addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        document.getElementById('shape-randomness-value').textContent = value.toFixed(1);
+      });
+    }
+    
+    const shapeCount = document.getElementById('shape-count');
+    if (shapeCount) {
+      shapeCount.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        document.getElementById('shape-count-value').textContent = value;
       });
     }
   }
@@ -300,6 +392,23 @@ export class EnhancedSelectionUI {
   handleSelectionMethodChange(method) {
     this.currentSelectionMethod = method;
     console.log('🎯 Selection method changed to:', method);
+    
+    // Show/hide method-specific controls
+    this.showMethodControls(method);
+    
+    // Show notification about the selected method
+    const methodDescriptions = {
+      'random': 'Random rectangular regions',
+      'colorRange': 'Select by color similarity',
+      'brightness': 'Select by brightness zones',
+      'edgeDetection': 'Select high-contrast edges',
+      'organicShapes': 'Natural blob-like shapes',
+      'contentAware': 'Smart content detection',
+      'combined': 'Mix multiple algorithms'
+    };
+    
+    const description = methodDescriptions[method] || 'Unknown method';
+    this.showNotification(`Selection method: ${description}`, 'info', 2500);
   }
 
   handlePreviewToggle(enabled) {
@@ -448,23 +557,132 @@ export class EnhancedSelectionUI {
   }
 
   getSelectionConfig() {
-    const intensitySelect = document.getElementById('intensity-select');
-    const intensity = intensitySelect ? intensitySelect.value : 'medium';
-    
     return {
-      intensity: intensity,
-      maxRegions: this.getMaxRegionsForIntensity(intensity),
       sensitivity: this.selectionSensitivity
     };
   }
 
-  getMaxRegionsForIntensity(intensity) {
-    switch (intensity) {
-      case 'medium': return 2;
-      case 'large': return 4;
-      case 'extraLarge': return 6;
-      default: return 2;
+  showMethodControls(method) {
+    // Hide all method-specific control divs
+    const controlIds = [
+      'random-controls',
+      'color-range-controls',
+      'brightness-controls',
+      'edge-detection-controls',
+      'organic-shape-controls',
+      'combined-controls'
+    ];
+    
+    controlIds.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) element.style.display = 'none';
+    });
+    
+    // Show relevant controls
+    switch(method) {
+      case 'random':
+        const randomControls = document.getElementById('random-controls');
+        if (randomControls) randomControls.style.display = 'block';
+        break;
+        
+      case 'colorRange':
+        const colorControls = document.getElementById('color-range-controls');
+        if (colorControls) colorControls.style.display = 'block';
+        this.updateColorPreview();
+        break;
+        
+      case 'brightness':
+        const brightnessControls = document.getElementById('brightness-controls');
+        if (brightnessControls) brightnessControls.style.display = 'block';
+        break;
+        
+      case 'edgeDetection':
+        const edgeControls = document.getElementById('edge-detection-controls');
+        if (edgeControls) edgeControls.style.display = 'block';
+        break;
+        
+      case 'organicShapes':
+        const organicControls = document.getElementById('organic-shape-controls');
+        if (organicControls) organicControls.style.display = 'block';
+        break;
+        
+      case 'combined':
+        const combinedControls = document.getElementById('combined-controls');
+        if (combinedControls) combinedControls.style.display = 'block';
+        break;
     }
+  }
+
+  updateColorPreview() {
+    const hue = parseInt(document.getElementById('target-hue')?.value || 180);
+    const tolerance = parseInt(document.getElementById('color-tolerance')?.value || 30);
+    
+    // Update main color preview
+    const colorPreview = document.getElementById('color-preview');
+    if (colorPreview) {
+      colorPreview.style.background = `hsl(${hue}, 70%, 50%)`;
+    }
+    
+    // Update color range display
+    const rangeDisplay = document.getElementById('color-range-display');
+    if (rangeDisplay) {
+      rangeDisplay.innerHTML = '';
+      
+      // Show color range with tolerance
+      const steps = 20;
+      for (let i = 0; i < steps; i++) {
+        const step = (i / steps) * 2 - 1; // -1 to 1
+        const hueOffset = step * tolerance;
+        const displayHue = (hue + hueOffset + 360) % 360;
+        
+        const colorBar = document.createElement('div');
+        colorBar.style.cssText = `
+          flex: 1;
+          background: hsl(${displayHue}, 70%, 50%);
+          ${i === Math.floor(steps/2) ? 'border: 2px solid white;' : ''}
+        `;
+        rangeDisplay.appendChild(colorBar);
+      }
+    }
+  }
+  
+  getMethodSpecificConfig() {
+    const config = {};
+    
+    switch(this.currentSelectionMethod) {
+      case 'random':
+        config.intensity = document.getElementById('intensity-select')?.value || 'medium';
+        config.maxRegions = parseInt(document.getElementById('concurrent-selections')?.value || 3);
+        break;
+        
+      case 'colorRange':
+        config.targetHue = parseInt(document.getElementById('target-hue')?.value || 180);
+        config.hueTolerance = parseInt(document.getElementById('color-tolerance')?.value || 30);
+        config.minRegionSize = parseInt(document.getElementById('min-region-size')?.value || 100);
+        break;
+        
+      case 'brightness':
+        config.zone = document.getElementById('brightness-zone')?.value || 'shadows';
+        break;
+        
+      case 'edgeDetection':
+        config.threshold = parseInt(document.getElementById('edge-threshold')?.value || 30);
+        break;
+        
+      case 'organicShapes':
+        config.intensity = document.getElementById('organic-intensity-select')?.value || 'medium';
+        config.randomness = parseFloat(document.getElementById('shape-randomness')?.value || 0.3);
+        config.count = parseInt(document.getElementById('shape-count')?.value || 3);
+        break;
+        
+      case 'combined':
+        config.useColor = document.getElementById('combine-color')?.checked || false;
+        config.useBrightness = document.getElementById('combine-brightness')?.checked || false;
+        config.useEdges = document.getElementById('combine-edges')?.checked || false;
+        break;
+    }
+    
+    return config;
   }
 
   generateSelections() {
@@ -472,8 +690,17 @@ export class EnhancedSelectionUI {
       return [];
     }
 
-    const config = this.getSelectionConfig();
-    return this.selectionManager.generateAutomaticSelections(this.currentSelectionMethod, config);
+    const baseConfig = this.getSelectionConfig();
+    const methodConfig = this.getMethodSpecificConfig();
+    const config = { ...baseConfig, ...methodConfig };
+    
+    console.log(`🎨 Generating selections with method: ${this.currentSelectionMethod}`, config);
+    
+    const selections = this.selectionManager.generateAutomaticSelections(this.currentSelectionMethod, config);
+    
+    console.log(`✅ Generated ${selections.length} selections:`, selections);
+    
+    return selections;
   }
 
   // Cleanup

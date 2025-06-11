@@ -50,7 +50,11 @@ export class SelectionEngine {
     
     switch(method) {
       case 'random':
-        return [this.pickRandomClump(config.intensity, this.width, this.height)];
+        const numSelections = config.maxRegions || 1;
+        for (let i = 0; i < numSelections; i++) {
+          selections.push(this.pickRandomClump(config.intensity, this.width, this.height));
+        }
+        break;
         
       case 'colorRange':
         selections.push(...this.selectByColorRange(config));
@@ -383,24 +387,39 @@ export class SelectionEngine {
       count = 3,
       baseSize = 50,
       randomness = 0.3,
-      smoothness = 0.7
+      smoothness = 0.7,
+      intensity = 'medium'
     } = config;
+
+    // Adjust base size based on intensity
+    let adjustedBaseSize = baseSize;
+    switch(intensity) {
+      case 'medium':
+        adjustedBaseSize = Math.floor(this.width / 8);
+        break;
+      case 'large':
+        adjustedBaseSize = Math.floor(this.width / 5);
+        break;
+      case 'extraLarge':
+        adjustedBaseSize = Math.floor(this.width / 3);
+        break;
+    }
 
     const shapes = [];
     
     for (let i = 0; i < count; i++) {
-      const centerX = randomInt(baseSize, this.width - baseSize);
-      const centerY = randomInt(baseSize, this.height - baseSize);
+      const centerX = randomInt(adjustedBaseSize, this.width - adjustedBaseSize);
+      const centerY = randomInt(adjustedBaseSize, this.height - adjustedBaseSize);
       
       // Generate blob shape (for now, convert to bounding box)
-      const shape = this.generateBlob(centerX, centerY, baseSize, randomness);
+      const shape = this.generateBlob(centerX, centerY, adjustedBaseSize, randomness);
       
       // Convert to bounding box
       shapes.push({
-        x: Math.max(0, centerX - baseSize),
-        y: Math.max(0, centerY - baseSize),
-        w: Math.min(baseSize * 2, this.width - centerX + baseSize),
-        h: Math.min(baseSize * 2, this.height - centerY + baseSize)
+        x: Math.max(0, centerX - adjustedBaseSize),
+        y: Math.max(0, centerY - adjustedBaseSize),
+        w: Math.min(adjustedBaseSize * 2, this.width - centerX + adjustedBaseSize),
+        h: Math.min(adjustedBaseSize * 2, this.height - centerY + adjustedBaseSize)
       });
     }
     

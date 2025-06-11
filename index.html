@@ -207,6 +207,58 @@
       font-weight: bold;
       font-size: 14px;
     }
+    
+    /* Preset buttons styling */
+    .preset-group {
+      background: linear-gradient(145deg, #2a3640, #1f2b35);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+    }
+    
+    .preset-group .group-title {
+      color: #ffd700;
+    }
+    
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    
+    .preset-button {
+      background: linear-gradient(145deg, #3a3a50, #2f2f45);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px 8px;
+      color: white;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .preset-button:hover {
+      background: linear-gradient(145deg, #4a4a60, #3f3f55);
+      border-color: rgba(255, 215, 0, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
+    }
+    
+    .preset-button.active {
+      background: linear-gradient(145deg, #ffd700, #ffed4e);
+      color: #1a1a2e;
+      border-color: #ffd700;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    }
+    
+    .preset-info {
+      text-align: center;
+      margin-top: 8px;
+    }
 
     .canvas-area {
       background: linear-gradient(145deg, #2a2a40, #1f1f35); border-radius: 20px; padding: 30px;
@@ -334,6 +386,31 @@
       pointer-events: none;
     }
 
+    /* Method-specific controls styling */
+    #random-controls, #color-range-controls, #brightness-controls, 
+    #edge-detection-controls, #organic-shape-controls, #combined-controls {
+      margin-top: 15px;
+      padding: 15px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 196, 78, 0.1);
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    #color-preview-container {
+      animation: colorPulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes colorPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(78, 205, 196, 0); }
+      50% { box-shadow: 0 0 10px 2px rgba(78, 205, 196, 0.3); }
+    }
+    
     @media (max-width: 900px) {
       .studio-container { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
       .control-panel { max-height: none; order: 2; }
@@ -370,15 +447,7 @@
         </div>
       </div>
 
-      <!-- Intensity -->
-      <div class="control-group">
-        <div class="group-title">⚡ Intensity</div>
-        <select id="intensity-select" class="control-select">
-          <option value="medium">🟡 Medium</option>
-          <option value="large">🟠 Large</option>
-          <option value="extraLarge">🔴 Extra Large</option>
-        </select>
-      </div>
+
 
       <!-- Selection Method -->
       <div class="control-group selection-group">
@@ -399,6 +468,30 @@
           <option value="contentAware">🧠 Content Aware</option>
           <option value="combined">🌀 Combined Methods</option>
         </select>
+        
+        <!-- Random (Classic) Controls -->
+        <div id="random-controls" style="display: none;">
+          <div class="slider-container">
+            <div class="slider-label">
+              <span>⚡ Intensity</span>
+              <span id="intensity-display" class="slider-value">Medium</span>
+            </div>
+            <select id="intensity-select" class="control-select">
+              <option value="medium">🟡 Medium</option>
+              <option value="large">🟠 Large</option>
+              <option value="extraLarge">🔴 Extra Large</option>
+            </select>
+          </div>
+          
+          <div class="slider-container">
+            <div class="slider-label">
+              <span>🔢 Concurrent Selections</span>
+              <span id="concurrent-selections-value" class="slider-value">3</span>
+            </div>
+            <input type="range" id="concurrent-selections" class="control-slider" 
+                   min="1" max="10" value="3">
+          </div>
+        </div>
 
         <!-- Color Range Controls -->
         <div id="color-range-controls" style="display: none;">
@@ -409,6 +502,16 @@
             </div>
             <input type="range" id="target-hue" class="control-slider" 
                    min="0" max="360" value="180">
+            <!-- Interactive Color Preview -->
+            <div id="color-preview-container" style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div id="color-preview" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: hsl(180, 70%, 50%);"></div>
+                <div style="flex: 1;">
+                  <div style="font-size: 12px; color: #888;">Selected Color Range</div>
+                  <div id="color-range-display" style="display: flex; height: 20px; border-radius: 4px; overflow: hidden; margin-top: 4px;"></div>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div class="slider-container">
@@ -453,6 +556,17 @@
 
         <!-- Organic Shape Controls -->
         <div id="organic-shape-controls" style="display: none;">
+          <div class="slider-container">
+            <div class="slider-label">
+              <span>⚡ Intensity</span>
+              <span id="organic-intensity-display" class="slider-value">Medium</span>
+            </div>
+            <select id="organic-intensity-select" class="control-select">
+              <option value="medium">🟡 Medium</option>
+              <option value="large">🟠 Large</option>
+              <option value="extraLarge">🔴 Extra Large</option>
+            </select>
+          </div>
           <div class="slider-container">
             <div class="slider-label">
               <span>🌊 Shape Randomness</span>

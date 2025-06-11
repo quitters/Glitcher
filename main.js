@@ -15,6 +15,8 @@ import { PixelSortEffects } from './effects/destructive/pixel-sort-effects.js';
 import { ColorEffects } from './effects/destructive/color-effects.js';
 import { FilterEffects } from './effects/non-destructive/filter-effects.js';
 import { EFFECT_DEFAULTS } from './config/constants.js';
+import { EffectPresets } from './ui/effect-presets.js';
+import { PanelStateManager } from './ui/panel-state-manager.js';
 
 class GlitcherApp {
   constructor() {
@@ -22,6 +24,7 @@ class GlitcherApp {
     this.selectionManager = null;
     this.canvasInteraction = null;
     this.selectionUI = null;
+    this.panelStateManager = null;
     
     // Enhanced UI flag
     this.useEnhancedUI = true;
@@ -105,6 +108,10 @@ class GlitcherApp {
       this.setupTestControls();
       this.setupFilterControls();
       this.setupSelectionControls();
+      this.setupPresetControls();
+      
+      // Initialize panel state manager
+      this.panelStateManager = new PanelStateManager();
       
       console.log('✅ Glitcher App with Enhanced Selection System & Filter Effects initialized successfully!');
       
@@ -342,6 +349,36 @@ class GlitcherApp {
   }
 
   /**
+   * Set up preset controls
+   */
+  setupPresetControls() {
+    // Find or create preset control group
+    const controlPanel = document.querySelector('.control-panel');
+    const firstGroup = controlPanel.querySelector('.control-group');
+    
+    if (firstGroup) {
+      // Create preset group
+      const presetGroup = document.createElement('div');
+      presetGroup.className = 'control-group preset-group';
+      presetGroup.innerHTML = `
+        <div class="group-title">🎨 Quick Presets</div>
+      `;
+      
+      // Add preset buttons
+      const presetButtons = EffectPresets.createPresetButtons();
+      presetGroup.appendChild(presetButtons);
+      
+      // Insert after the module status
+      const moduleStatus = controlPanel.querySelector('.module-status');
+      if (moduleStatus && moduleStatus.nextSibling) {
+        controlPanel.insertBefore(presetGroup, moduleStatus.nextSibling);
+      } else {
+        controlPanel.insertBefore(presetGroup, firstGroup);
+      }
+    }
+  }
+
+  /**
    * NEW: Show/hide filter-specific controls
    */
   showFilterControls(filterType) {
@@ -552,6 +589,11 @@ class GlitcherApp {
     
     // Draw selection overlays (only when preview is enabled)
     this.selectionManager.drawInteractiveSelectionOverlay();
+    
+    // Also draw preview of active clumps if preview is enabled
+    if (this.selectionManager.showSelectionPreview) {
+      this.selectionManager.drawSelectionPreview(this.activeClumps);
+    }
 
     // Continue animation
     this.animationId = requestAnimationFrame((time) => this.animate(time));
@@ -571,6 +613,9 @@ class GlitcherApp {
       );
     } else {
       // In automatic mode, generate selections using UI settings
+      // Update selection engine with current image data
+      this.selectionManager.updateImageData(this.canvasManager.glitchImageData);
+      
       const selections = this.selectionUI.generateSelections();
       
       if (selections.length > 0) {
@@ -680,6 +725,9 @@ if (document.readyState === 'loading') {
 
 // Expose app instance for debugging
 window.glitcherApp = app;
+
+// Expose showFilterControls for presets
+app.showFilterControls = app.showFilterControls.bind(app);
 
 // Expose debug function globally
 window.getGlitcherDebugInfo = () => {
