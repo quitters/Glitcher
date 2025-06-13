@@ -54,6 +54,13 @@ export class PanelStateManager {
       if (this.panelStates[panelId] === 'collapsed') {
         this.collapsePanel(panel, false);
       }
+      // If panel is expanded on load, ensure UI state is correct
+      else if (this.panelStates[panelId] === 'expanded' || !this.panelStates[panelId]) {
+        // Delay to ensure other UI components are initialized
+        setTimeout(() => {
+          this.restoreUIStateForPanel(panel, panelId);
+        }, 100);
+      }
     });
   }
 
@@ -111,7 +118,7 @@ export class PanelStateManager {
     const isCollapsed = panel.classList.contains('collapsed');
     
     if (isCollapsed) {
-      this.expandPanel(panel, true);
+      this.expandPanel(panel, true, panelId);
     } else {
       this.collapsePanel(panel, true);
     }
@@ -163,9 +170,9 @@ export class PanelStateManager {
   }
 
   /**
-   * Expand a panel
+   * Expand a panel with UI state restoration
    */
-  expandPanel(panel, animate = true) {
+  expandPanel(panel, animate = true, panelId = null) {
     panel.classList.remove('collapsed');
     
     const indicator = panel.querySelector('.collapse-indicator');
@@ -208,6 +215,63 @@ export class PanelStateManager {
       }, 300);
     }
     panel.style.paddingBottom = '';
+
+    // CRITICAL FIX: Restore UI component state after expansion
+    setTimeout(() => {
+      this.restoreUIStateForPanel(panel, panelId);
+    }, animate ? 350 : 50);
+  }
+
+  /**
+   * Restore UI state for specific panel types
+   */
+  restoreUIStateForPanel(panel, panelId) {
+    const panelTitle = panel.querySelector('.group-title')?.textContent || '';
+    const hasFilterGroupClass = panel.classList.contains('filter-group');
+    
+    console.log('🔄 Restoring UI state for panel:', panelTitle, 'hasFilterGroupClass:', hasFilterGroupClass);
+    
+    // Selection Method panel restoration
+    if (panelTitle.includes('Selection Method')) {
+      const selectionUI = window.glitcherApp?.selectionUI;
+      if (selectionUI) {
+        // Restore method-specific controls visibility
+        const currentMethod = selectionUI.currentSelectionMethod || 'random';
+        if (selectionUI.showMethodControls) {
+          selectionUI.showMethodControls(currentMethod);
+          console.log('✅ Restored selection method controls for:', currentMethod);
+        }
+        
+        // Restore manual mode state
+        const manualModeCheckbox = document.getElementById('manual-selection-mode');
+        if (manualModeCheckbox?.checked) {
+          const toolsContainer = selectionUI.findInteractiveToolsContainer();
+          if (toolsContainer) {
+            toolsContainer.style.display = 'block';
+          }
+        }
+      }
+    }
+    
+    // Filter Effects panel restoration - check for title text or CSS class
+    if (panelTitle.includes('Filter Effects') || hasFilterGroupClass) {
+      const app = window.glitcherApp;
+      console.log('🎨 Filter panel detected. App:', !!app, 'filterEffect:', app?.filterEffect, 'showFilterControls:', !!app?.showFilterControls);
+      
+      if (app && app.showFilterControls) {
+        // Always call showFilterControls to ensure proper state, even for 'off'
+        const currentFilter = app.filterEffect || 'off';
+        console.log('🎨 Restoring filter controls for:', currentFilter);
+        app.showFilterControls(currentFilter);
+        console.log('✅ Filter controls restored successfully for:', currentFilter);
+      } else {
+        if (!app) {
+          console.warn('⚠️ glitcherApp not found on window object');
+        } else {
+          console.warn('⚠️ showFilterControls method not found on app');
+        }
+      }
+    }
   }
 
   /**
@@ -234,7 +298,7 @@ export class PanelStateManager {
       const panelId = panel.dataset.panelId;
       if (panelId) {
         if (allCollapsed) {
-          this.expandPanel(panel, true);
+          this.expandPanel(panel, true, panelId);
           this.panelStates[panelId] = 'expanded';
         } else {
           this.collapsePanel(panel, true);
@@ -264,7 +328,8 @@ export class PanelStateManager {
     
     // Expand all panels
     document.querySelectorAll('.control-group.collapsed').forEach(panel => {
-      this.expandPanel(panel, true);
+      const panelId = panel.dataset.panelId;
+      this.expandPanel(panel, true, panelId);
     });
   }
 }

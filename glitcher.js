@@ -961,6 +961,9 @@ recordBtn.addEventListener('click', startRecording);
 // Snapshot
 snapshotBtn.addEventListener('click', downloadSnapshot);
 
+// Batch Export
+batchExportBtn.addEventListener('click', batchExport);
+
 // Presets
 savePresetBtn.addEventListener('click', savePreset);
 loadPresetBtn.addEventListener('click', () => presetFileInput.click());
@@ -969,9 +972,6 @@ presetSelect.addEventListener('change', loadBuiltInPreset);
 
 // Audio reactive
 audioReactiveCheckbox.addEventListener('change', toggleAudioReactive);
-
-// Batch export
-batchExportBtn.addEventListener('click', batchExport);
 
 // Canvas mouse events for interactive tools
 canvas.addEventListener('mousedown', handleCanvasMouseDown);
@@ -3151,81 +3151,7 @@ function resetImage() {
   }, 150);
 }
 
-// ========== Recording Functions ==========
 
-function startRecording() {
-  if (!glitchImageData) return;
-
-  const duration = parseInt(recordRange.value, 10);
-  const doReverse = reverseCheckbox.checked;
-
-  recordedChunks = [];
-
-  let options = {
-    mimeType: 'video/mp4; codecs=avc1.42E01E',
-    videoBitsPerSecond: 15_000_000
-  };
-
-  if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-    options = {
-      mimeType: 'video/webm; codecs=vp9',
-      videoBitsPerSecond: 10_000_000
-    };
-  }
-
-  const stream = canvas.captureStream(30);
-  mediaRecorder = new MediaRecorder(stream, options);
-
-  mediaRecorder.ondataavailable = (e) => {
-    if (e.data && e.data.size > 0) {
-      recordedChunks.push(e.data);
-    }
-  };
-
-  mediaRecorder.onstop = () => {
-    if (doReverse) {
-      recordedChunks.reverse();
-    }
-
-    const blob = new Blob(recordedChunks, { type: options.mimeType });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    if (options.mimeType.includes('mp4')) {
-      link.download = 'glitch_recording.mp4';
-    } else {
-      link.download = 'glitch_recording.webm';
-    }
-    link.click();
-    URL.revokeObjectURL(url);
-    
-    recordBtn.innerHTML = '🎥 Record';
-  };
-
-  recordBtn.innerHTML = '🔴 Recording...';
-  
-  mediaRecorder.start();
-  setTimeout(() => {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
-    }
-  }, duration * 1000);
-}
-
-function downloadSnapshot() {
-  if (!glitchImageData) return;
-  const dataURL = canvas.toDataURL('image/png');
-  const link = document.createElement('a');
-  link.href = dataURL;
-  link.download = 'glitch_snapshot.png';
-  link.click();
-  
-  snapshotBtn.innerHTML = '📸 Saved!';
-  setTimeout(() => {
-    snapshotBtn.innerHTML = '📷 Snapshot';
-  }, 1500);
-}
 
 // ========== Audio Reactive Functions ==========
 

@@ -17,6 +17,10 @@ import { FilterEffects } from './effects/non-destructive/filter-effects.js';
 import { EFFECT_DEFAULTS } from './config/constants.js';
 import { EffectPresets } from './ui/effect-presets.js';
 import { PanelStateManager } from './ui/panel-state-manager.js';
+import { ArtisticFilter } from './effects/non-destructive/new-filters/artistic-filter.js'; // Added for artistic filter integration
+import { filterControlsUI } from './ui/filter-controls-ui.js';
+import { FilterControlsUI } from './ui/filter-controls-ui.js';
+import { RecordingManager } from './core/recording-manager.js';
 
 class GlitcherApp {
   constructor() {
@@ -25,6 +29,7 @@ class GlitcherApp {
     this.canvasInteraction = null;
     this.selectionUI = null;
     this.panelStateManager = null;
+    this.recordingManager = null;
     
     // Enhanced UI flag
     this.useEnhancedUI = true;
@@ -37,13 +42,13 @@ class GlitcherApp {
     
     // Destructive effects state
     this.activeClumps = [];
-    this.testDirection = 'down';
+    this.testDirection = 'off';
     this.testSpeed = 2;
     this.testSpiral = 'off';
     this.testSwirlStrength = 0.06;
     this.spiralDirection = 'cw';
     this.testSlice = 'off';
-    this.testColorOffset = 20;
+    this.testColorOffset = 0;
     this.testPixelSort = 'off';
     this.testColorEffect = 'off';
     this.testColorIntensity = 50;
@@ -51,21 +56,200 @@ class GlitcherApp {
     // NEW: Non-destructive filter effects state
     this.filterEffect = 'off';
     this.filterIntensity = 50;
+    this.filterControlsUI = filterControlsUI; // Use singleton instance
     this.filterOptions = {
-      style: 'warhol',        // for popArt
-      filmType: 'polaroid',   // for vintage
-      grainAmount: 30,        // for vintage
-      direction: 'horizontal', // for motionBlur
-      distance: 10,           // for motionBlur
-      dotSize: 4,             // for halftone
-      pattern: 'circle',      // for halftone
-      // NEW: Options for new filter categories
-      cyberpunkStyle: 'neon',
+      // Main style selectors
       artisticStyle: 'oil_painting',
-      atmosphericStyle: 'fog',
-      experimentalStyle: 'kaleidoscope'
+
+      // Nested parameter objects for each filter category
+      halftone: {
+        dotSize: 4,
+        pattern: 'circle',
+        angle: 0,
+        threshold: 128,
+        colorMode: 'bw'
+      },
+      motionBlur: {
+        direction: 'horizontal',
+        distance: 10,
+        angle: 0,
+        fadeType: 'linear',
+        quality: 'normal',
+        radialType: 'zoom',
+        centerX: null,
+        centerY: null
+      },
+      liquify: {
+        warpType: 'push',
+        coveragePercent: 100,
+        strength: 50
+      },
+      colorGrading: {
+        shadows: { r: 0, g: 0, b: 0 },
+        midtones: { r: 0, g: 0, b: 0 },
+        highlights: { r: 0, g: 0, b: 0 },
+        temperature: 0,
+        tint: 0,
+        vibrance: 0,
+        saturation: 0
+      },
+      noise: {
+        noiseType: 'film',
+        noiseAmount: 50,
+        noiseSize: 1,
+        colorNoise: true
+      },
+      artisticParams: {
+        oil_painting: {
+          brushSize: 5,
+          smudgeDetail: 50, // Renamed from smudge/stroke detail for clarity
+          colorPaletteRichness: 70,
+        },
+        watercolor: {
+          bleedAmount: 30,
+          pigmentDensity: 60,
+          edgeDarkening: 40,
+          paperTextureStrength: 20,
+          waterAmount: 50,
+        },
+        pencil_sketch: {
+          strokeWidth: 2,
+          hatchDensity: 50,
+          edgeThreshold: 20,
+          graphiteShadingIntensity: 60,
+          paperColor: '#FFFFFF',
+          pencilColor: '#333333',
+        },
+        mosaic: {
+          tileSize: 20,
+          groutThickness: 2,
+          groutColor: '#CCCCCC',
+          colorVariation: 30,
+          tileShape: 'square',
+        },
+        stained_glass: {
+          cellSize: 50,
+          borderThickness: 3,
+          borderColor: '#000000',
+          lightRefractionIndex: 20,
+          colorPaletteComplexity: 60,
+        },
+        comic_book: {
+          inkOutlineStrength: 5,
+          colorLevels: 4,
+          halftoneDotSize: 3,
+          halftoneAngle: 45,
+          edgeDetectionThreshold: 30,
+        },
+        crosshatch: {
+          lineSpacing: 8,
+          lineThickness: 1,
+          angleVariation: 15,
+          hatchDarkness: 70,
+          backgroundColor: '#FFFFFF', // Renamed from background lightness/paper color
+          numLayers: 3, // Renamed from number of hatch layers
+        },
+        pointillism: {
+          dotSize: 4,
+          dotDensity: 60,
+          colorVariation: 40,
+          dotShape: 'circle',
+          backgroundColor: '#FFFFFF',
+        },
+      },
     };
-    
+
+    // Configuration for Artistic Filter UI controls
+    this.artisticParamsConfig = {
+      oil_painting: {
+        brushSize: { type: 'slider', min: 1, max: 20, step: 1, unit: 'px' },
+        smudgeDetail: { type: 'slider', min: 0, max: 100, step: 1 },
+        colorPaletteRichness: { type: 'slider', min: 0, max: 100, step: 1 }
+      },
+      watercolor: {
+        bleedAmount: { type: 'slider', min: 0, max: 100, step: 1 },
+        pigmentDensity: { type: 'slider', min: 0, max: 100, step: 1 },
+        edgeDarkening: { type: 'slider', min: 0, max: 100, step: 1 },
+        paperTextureStrength: { type: 'slider', min: 0, max: 100, step: 1 },
+        waterAmount: { type: 'slider', min: 0, max: 100, step: 1 }
+      },
+      pencil_sketch: {
+        strokeWidth: { type: 'slider', min: 1, max: 10, step: 0.5, unit: 'px' },
+        hatchDensity: { type: 'slider', min: 0, max: 100, step: 1 },
+        edgeThreshold: { type: 'slider', min: 0, max: 100, step: 1 },
+        graphiteShadingIntensity: { type: 'slider', min: 0, max: 100, step: 1 },
+        paperColor: { type: 'color' },
+        pencilColor: { type: 'color' }
+      },
+      mosaic: {
+        tileSize: { type: 'slider', min: 5, max: 50, step: 1, unit: 'px' },
+        groutThickness: { type: 'slider', min: 0, max: 10, step: 1, unit: 'px' },
+        groutColor: { type: 'color' },
+        colorVariation: { type: 'slider', min: 0, max: 100, step: 1 },
+        tileShape: { type: 'dropdown', options: ['square', 'hexagon', 'circle'] }
+      },
+      stained_glass: {
+        cellSize: { type: 'slider', min: 10, max: 100, step: 1, unit: 'px' },
+        borderThickness: { type: 'slider', min: 1, max: 10, step: 1, unit: 'px' },
+        borderColor: { type: 'color' },
+        lightRefractionIndex: { type: 'slider', min: 0, max: 100, step: 1 },
+        colorPaletteComplexity: { type: 'slider', min: 0, max: 100, step: 1 }
+      },
+      comic_book: {
+        inkOutlineStrength: { type: 'slider', min: 0, max: 10, step: 0.5 },
+        colorLevels: { type: 'slider', min: 2, max: 16, step: 1 },
+        halftoneDotSize: { type: 'slider', min: 1, max: 20, step: 1, unit: 'px' },
+        halftoneAngle: { type: 'slider', min: 0, max: 360, step: 1, unit: '°' },
+        edgeDetectionThreshold: { type: 'slider', min: 0, max: 100, step: 1 }
+      },
+      crosshatch: {
+        lineSpacing: { type: 'slider', min: 1, max: 20, step: 1, unit: 'px' },
+        lineThickness: { type: 'slider', min: 1, max: 10, step: 0.5, unit: 'px' },
+        angleVariation: { type: 'slider', min: 0, max: 90, step: 1, unit: '°' },
+        hatchDarkness: { type: 'slider', min: 0, max: 100, step: 1 },
+        backgroundColor: { type: 'color' },
+        numLayers: { type: 'slider', min: 1, max: 5, step: 1 }
+      },
+      pointillism: {
+        dotSize: { type: 'slider', min: 1, max: 20, step: 1, unit: 'px' },
+        dotDensity: { type: 'slider', min: 0, max: 100, step: 1 },
+        colorVariation: { type: 'slider', min: 0, max: 100, step: 1 },
+        dotShape: { type: 'dropdown', options: ['circle', 'square', 'diamond'] },
+        backgroundColor: { type: 'color' }
+      }
+    };
+
+    // Configuration for Filter Effects UI controls
+    this.filterParamsConfig = {
+      halftone: {
+        dotSize: { type: 'slider', min: 1, max: 30, step: 1, unit: 'px' },
+        pattern: { type: 'dropdown', options: ['circle', 'square', 'diamond', 'line'] },
+        angle: { type: 'slider', min: 0, max: 360, step: 1, unit: '°' },
+        threshold: { type: 'slider', min: 0, max: 255, step: 1 },
+        colorMode: { type: 'dropdown', options: ['bw', 'duotone', 'color'] }
+      },
+      motionBlur: {
+        direction: { type: 'dropdown', options: ['horizontal', 'vertical', 'diagonal-left', 'diagonal-right', 'radial'] },
+        distance: { type: 'slider', min: 0, max: 100, step: 1, unit: 'px' },
+        angle: { type: 'slider', min: 0, max: 360, step: 1, unit: '°' },
+        quality: { type: 'dropdown', options: ['fast', 'normal', 'high'] },
+        fadeType: { type: 'dropdown', options: ['linear', 'exponential', 'sine'] },
+        radialType: { type: 'dropdown', options: ['zoom', 'spin'] }
+      },
+      liquify: {
+        warpType: { type: 'dropdown', options: ['push', 'pull', 'twirl', 'bloat', 'pinch'] },
+        strength: { type: 'slider', min: 0, max: 100, step: 1 },
+        coveragePercent: { type: 'slider', min: 25, max: 150, step: 1, unit: '%' }
+      },
+      noise: {
+        noiseAmount: { type: 'slider', min: 0, max: 100, step: 1 },
+        noiseType: { type: 'dropdown', options: ['film', 'digital', 'perlin', 'cellular'] },
+        noiseSize: { type: 'slider', min: 1, max: 10, step: 1 },
+        colorNoise: { type: 'toggle' } // Assuming a toggle/checkbox control
+      }
+      // Color Grading would be more complex, handled separately
+    };
+
     // Selection system state
     this.minLifetime = 90;
     this.maxLifetime = 150;
@@ -80,6 +264,17 @@ class GlitcherApp {
       
       // Initialize canvas manager first
       this.canvasManager.init();
+
+      // Store references to the effect classes, as their methods are static
+      this.DirectionEffects = DirectionEffects;
+      this.SpiralEffects = SpiralEffects;
+      this.SliceEffects = SliceEffects;
+      this.PixelSortEffects = PixelSortEffects;
+      this.ColorEffects = ColorEffects;
+      this.filterEffects = new FilterEffects(this); // Non-destructive filters need app access
+
+      // Initialize recording manager after canvas and effect modules are ready
+      this.recordingManager = new RecordingManager(this);
       
       // Initialize selection system
       this.selectionManager = new SelectionManager(this.canvasManager);
@@ -110,7 +305,10 @@ class GlitcherApp {
       this.setupSelectionControls();
       this.setupPresetControls();
       
-      // Initialize panel state manager
+      // Bind methods that might be called externally
+      this.showFilterControls = this.showFilterControls.bind(this);
+      
+      // Initialize panel state manager AFTER all UI setup
       this.panelStateManager = new PanelStateManager();
       
       console.log('✅ Glitcher App with Enhanced Selection System & Filter Effects initialized successfully!');
@@ -118,6 +316,15 @@ class GlitcherApp {
     } catch (error) {
       console.error('❌ Failed to initialize Glitcher App:', error);
     }
+  }
+  
+  /**
+   * Setup preset controls
+   */
+  setupPresetControls() {
+    // This will be implemented by the EffectPresets module
+    // Just a placeholder for now to avoid errors
+    console.log('🎆 Preset controls setup skipped (to be implemented)');
   }
 
   /**
@@ -251,15 +458,33 @@ class GlitcherApp {
   }
 
   /**
-   * NEW: Set up filter effect controls
+   * NEW: Set up enhanced filter effect controls
    */
   setupFilterControls() {
+    // Set up filter controls UI callback
+    this.filterControlsUI.onControlChange((filterType, controlId, value) => {
+      this.handleFilterControlChange(filterType, controlId, value);
+    });
+    
     // Filter effect select
     const filterEffectSelect = document.getElementById('filter-effect-select');
     if (filterEffectSelect) {
       filterEffectSelect.addEventListener('change', (e) => {
-        this.filterEffect = e.target.value;
-        this.showFilterControls(e.target.value);
+        const selectedValue = e.target.value;
+        this.filterEffect = selectedValue;
+        
+        // Parse the filter type and style
+        if (selectedValue.startsWith('artistic-')) {
+          // Extract the style from compound value
+          const style = selectedValue.replace('artistic-', '');
+          this.filterOptions.artisticStyle = style;
+          
+          // Update the style-specific UI
+          this.updateArtisticStyleSpecificUI(style);
+        }
+        
+        // Show the appropriate filter controls
+        this.showFilterControls(selectedValue);
       });
     }
     
@@ -273,6 +498,108 @@ class GlitcherApp {
       });
     }
     
+    // Enhanced Halftone Controls
+    this.setupHalftoneControls();
+    
+    // Enhanced Motion Blur Controls
+    this.setupMotionBlurControls();
+    
+    // Existing filter controls
+    this.setupBasicFilterControls();
+    
+    // NEW: Advanced filter controls
+    this.setupAdvancedFilterControls();
+
+    // NEW: Artistic filter controls
+    this.setupArtisticControls();
+  }
+  
+  /**
+   * Setup enhanced halftone controls
+   */
+  setupHalftoneControls() {
+    const container = document.getElementById('halftone-controls-container');
+    if (!container) return;
+    container.innerHTML = ''; // Clear existing controls
+
+    const filterKey = 'halftone';
+    const paramConfigs = this.filterParamsConfig[filterKey];
+    if (!paramConfigs) return;
+
+    for (const paramKey in paramConfigs) {
+      const config = paramConfigs[paramKey];
+      const labelText = paramKey.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+      let controlElement = null;
+
+      switch (config.type) {
+        case 'slider':
+          controlElement = this._createSliderControl(labelText, paramKey, config, this.filterOptions[filterKey]);
+          break;
+        case 'dropdown':
+          controlElement = this._createDropdownControl(labelText, paramKey, config, this.filterOptions[filterKey]);
+          break;
+        case 'toggle':
+          controlElement = this._createToggleControl(labelText, paramKey, config, this.filterOptions[filterKey]);
+          break;
+        // Add other control types as needed
+      }
+
+      if (controlElement) {
+        container.appendChild(controlElement);
+      }
+    }
+  }
+
+  /**
+   * Setup enhanced motion blur controls
+   */
+  setupMotionBlurControls() {
+    const container = document.getElementById('motion-blur-controls-container');
+    if (!container) return;
+    container.innerHTML = ''; // Clear existing controls
+
+    const filterKey = 'motionBlur';
+    const paramConfigs = this.filterParamsConfig[filterKey];
+    if (!paramConfigs) return;
+
+    const targetOptionsObject = this.filterOptions[filterKey];
+
+    for (const paramKey in paramConfigs) {
+      const config = paramConfigs[paramKey];
+      const labelText = paramKey.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+      let controlElement = null;
+
+      switch (config.type) {
+        case 'slider':
+          controlElement = this._createSliderControl(labelText, paramKey, config, targetOptionsObject);
+          break;
+        case 'dropdown':
+          controlElement = this._createDropdownControl(labelText, paramKey, config, targetOptionsObject);
+          break;
+      }
+
+      if (controlElement) {
+        // Add special listener for direction to show/hide other controls
+        if (paramKey === 'direction') {
+            const select = controlElement.querySelector('select');
+            if(select) {
+                select.addEventListener('change', (e) => {
+                    // The value is already updated by the generic handler, just need to run the side effect
+                    this.showMotionBlurOptions(e.target.value);
+                });
+            }
+        }
+        container.appendChild(controlElement);
+      }
+    }
+    // Set initial visibility of conditional controls
+    this.showMotionBlurOptions(targetOptionsObject.direction);
+  }
+
+  /**
+   * Setup basic filter controls (existing)
+   */
+  setupBasicFilterControls() {
     // Pop Art style select
     const popArtStyleSelect = document.getElementById('pop-art-style');
     if (popArtStyleSelect) {
@@ -289,7 +616,7 @@ class GlitcherApp {
       });
     }
     
-    // Film grain range
+    // Film grain range (for vintage filters)
     const filmGrainRange = document.getElementById('film-grain-range');
     if (filmGrainRange) {
       filmGrainRange.addEventListener('input', (e) => {
@@ -298,151 +625,637 @@ class GlitcherApp {
         if (filmGrainValue) filmGrainValue.textContent = this.filterOptions.grainAmount;
       });
     }
-    
-    // Motion blur direction select
-    const motionBlurDirection = document.getElementById('motion-blur-direction');
-    if (motionBlurDirection) {
-      motionBlurDirection.addEventListener('change', (e) => {
-        this.filterOptions.direction = e.target.value;
-      });
-    }
-    
-    // Halftone pattern select
-    const halftonePattern = document.getElementById('halftone-pattern');
-    if (halftonePattern) {
-      halftonePattern.addEventListener('change', (e) => {
-        this.filterOptions.pattern = e.target.value;
-      });
-    }
-    
-    // NEW: Cyberpunk style select
-    const cyberpunkStyle = document.getElementById('cyberpunk-style');
-    if (cyberpunkStyle) {
-      cyberpunkStyle.addEventListener('change', (e) => {
-        this.filterOptions.cyberpunkStyle = e.target.value;
-      });
-    }
-    
-    // NEW: Artistic style select
-    const artisticStyle = document.getElementById('artistic-style');
-    if (artisticStyle) {
-      artisticStyle.addEventListener('change', (e) => {
-        this.filterOptions.artisticStyle = e.target.value;
-      });
-    }
-    
-    // NEW: Atmospheric style select
-    const atmosphericStyle = document.getElementById('atmospheric-style');
-    if (atmosphericStyle) {
-      atmosphericStyle.addEventListener('change', (e) => {
-        this.filterOptions.atmosphericStyle = e.target.value;
-      });
-    }
-    
-    // NEW: Experimental style select
-    const experimentalStyle = document.getElementById('experimental-style');
-    if (experimentalStyle) {
-      experimentalStyle.addEventListener('change', (e) => {
-        this.filterOptions.experimentalStyle = e.target.value;
-      });
-    }
   }
-
+  
   /**
-   * Set up preset controls
+   * Setup advanced filter controls (NEW)
    */
-  setupPresetControls() {
-    // Find or create preset control group
-    const controlPanel = document.querySelector('.control-panel');
-    const firstGroup = controlPanel.querySelector('.control-group');
+  setupAdvancedFilterControls() {
+    // Liquify controls
+    this.setupLiquifyControls();
     
-    if (firstGroup) {
-      // Create preset group
-      const presetGroup = document.createElement('div');
-      presetGroup.className = 'control-group preset-group';
-      presetGroup.innerHTML = `
-        <div class="group-title">🎨 Quick Presets</div>
-      `;
-      
-      // Add preset buttons
-      const presetButtons = EffectPresets.createPresetButtons();
-      presetGroup.appendChild(presetButtons);
-      
-      // Insert after the module status
-      const moduleStatus = controlPanel.querySelector('.module-status');
-      if (moduleStatus && moduleStatus.nextSibling) {
-        controlPanel.insertBefore(presetGroup, moduleStatus.nextSibling);
-      } else {
-        controlPanel.insertBefore(presetGroup, firstGroup);
+    // Color grading controls
+    this.setupColorGradingControls();
+    
+    // Noise controls
+    this.setupNoiseControls();
+  }
+  
+  /**
+   * Setup liquify filter controls
+   */
+  setupLiquifyControls() {
+    const container = document.getElementById('liquify-controls-container');
+    if (!container) return;
+    container.innerHTML = ''; // Clear existing controls
+
+    const filterKey = 'liquify';
+    const paramConfigs = this.filterParamsConfig[filterKey];
+    if (!paramConfigs) return;
+
+    const targetOptionsObject = this.filterOptions[filterKey];
+
+    for (const paramKey in paramConfigs) {
+      const config = paramConfigs[paramKey];
+      const labelText = paramKey.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+      let controlElement = null;
+
+      switch (config.type) {
+        case 'slider':
+          controlElement = this._createSliderControl(labelText, paramKey, config, targetOptionsObject);
+          break;
+        case 'dropdown':
+          controlElement = this._createDropdownControl(labelText, paramKey, config, targetOptionsObject);
+          break;
+      }
+
+      if (controlElement) {
+        container.appendChild(controlElement);
       }
     }
   }
-
+  
   /**
-   * NEW: Show/hide filter-specific controls
+   * Setup color grading controls
+   */
+  setupColorGradingControls() {
+    // Temperature control
+    const temperatureRange = document.getElementById('color-grading-temperature');
+    if (temperatureRange) {
+      temperatureRange.addEventListener('input', (e) => {
+        this.filterOptions.temperature = parseInt(e.target.value);
+        const temperatureValue = document.getElementById('color-grading-temperature-value');
+        if (temperatureValue) temperatureValue.textContent = this.filterOptions.temperature;
+      });
+    }
+    
+    // Tint control
+    const tintRange = document.getElementById('color-grading-tint');
+    if (tintRange) {
+      tintRange.addEventListener('input', (e) => {
+        this.filterOptions.tint = parseInt(e.target.value);
+        const tintValue = document.getElementById('color-grading-tint-value');
+        if (tintValue) tintValue.textContent = this.filterOptions.tint;
+      });
+    }
+    
+    // Vibrance control
+    const vibranceRange = document.getElementById('color-grading-vibrance');
+    if (vibranceRange) {
+      vibranceRange.addEventListener('input', (e) => {
+        this.filterOptions.vibrance = parseInt(e.target.value);
+        const vibranceValue = document.getElementById('color-grading-vibrance-value');
+        if (vibranceValue) vibranceValue.textContent = this.filterOptions.vibrance;
+      });
+    }
+    
+    // Saturation control
+    const saturationRange = document.getElementById('color-grading-saturation');
+    if (saturationRange) {
+      saturationRange.addEventListener('input', (e) => {
+        this.filterOptions.saturation = parseInt(e.target.value);
+        const saturationValue = document.getElementById('color-grading-saturation-value');
+        if (saturationValue) saturationValue.textContent = this.filterOptions.saturation;
+      });
+    }
+  }
+  
+  /**
+   * Setup noise filter controls
+   */
+  setupNoiseControls() {
+    const container = document.getElementById('noise-controls-container');
+    if (!container) return;
+    container.innerHTML = ''; // Clear existing controls
+
+    const filterKey = 'noise';
+    const paramConfigs = this.filterParamsConfig[filterKey];
+    if (!paramConfigs) return;
+
+    const targetOptionsObject = this.filterOptions[filterKey];
+
+    for (const paramKey in paramConfigs) {
+      const config = paramConfigs[paramKey];
+      const labelText = paramKey.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+      let controlElement = null;
+
+      switch (config.type) {
+        case 'slider':
+          controlElement = this._createSliderControl(labelText, paramKey, config, targetOptionsObject);
+          break;
+        case 'dropdown':
+          controlElement = this._createDropdownControl(labelText, paramKey, config, targetOptionsObject);
+          break;
+        case 'toggle':
+          controlElement = this._createToggleControl(labelText, paramKey, config, targetOptionsObject);
+          break;
+      }
+
+      if (controlElement) {
+        container.appendChild(controlElement);
+      }
+    }
+  }
+  
+  /**
+   * Update filter controls dynamically
+   */
+  updateFilterControls(filterType) {
+    // Get the appropriate container based on filter type
+    let container = null;
+    
+    if (filterType === 'emboss') {
+      container = document.getElementById('emboss-controls-container');
+    } else if (filterType === 'edgeDetect') {
+      container = document.getElementById('edge-detect-controls-container');
+    } else if (filterType === 'vignette') {
+      container = document.getElementById('vignette-controls-container');
+    } else if (filterType.startsWith('cyberpunk-')) {
+      container = document.getElementById('cyberpunk-style-controls-container');
+    } else if (filterType.startsWith('artistic-')) {
+      container = document.getElementById('artistic-style-controls-container');
+    } else if (filterType.startsWith('atmospheric-')) {
+      container = document.getElementById('atmospheric-style-controls-container');
+    } else if (filterType.startsWith('experimental-')) {
+      container = document.getElementById('experimental-style-controls-container');
+    }
+    
+    if (container) {
+      this.filterControlsUI.updateControlsContainer(filterType, container);
+    }
+  }
+  
+  /**
+   * Handle filter control changes from dynamic UI
+   */
+  handleFilterControlChange(filterType, controlId, value) {
+    // Map the control values to filter options
+    const paramMap = {
+      // Emboss
+      'emboss-angle': () => { this.filterOptions.embossAngle = parseFloat(value); },
+      'emboss-depth': () => { this.filterOptions.embossDepth = parseFloat(value); },
+      'emboss-blend': () => { this.filterOptions.embossBlend = value; },
+      
+      // Edge Detection
+      'edge-method': () => { this.filterOptions.edgeMethod = value; },
+      'edge-threshold': () => { this.filterOptions.edgeThreshold = parseInt(value); },
+      'edge-color': () => { this.filterOptions.edgeColor = FilterControlsUI.hexToRgb(value); },
+      'edge-background': () => { this.filterOptions.edgeBackground = value; },
+      
+      // Vignette
+      'vignette-shape': () => { this.filterOptions.vignetteShape = value; },
+      'vignette-size': () => { this.filterOptions.vignetteSize = parseFloat(value); },
+      'vignette-softness': () => { this.filterOptions.vignetteSoftness = parseFloat(value); },
+      'vignette-x': () => { this.filterOptions.vignetteX = parseFloat(value); },
+      'vignette-y': () => { this.filterOptions.vignetteY = parseFloat(value); },
+      'vignette-color': () => { this.filterOptions.vignetteColor = FilterControlsUI.hexToRgb(value); },
+      
+      // Cyberpunk filters
+      'glow-radius': () => { this.filterOptions.glowRadius = parseFloat(value); },
+      'digital-noise': () => { this.filterOptions.digitalNoise = parseFloat(value); },
+      'gradient-strength': () => { this.filterOptions.gradientStrength = parseFloat(value); },
+      'rain-density': () => { this.filterOptions.rainDensity = parseFloat(value); },
+      'flicker-rate': () => { this.filterOptions.flickerRate = parseFloat(value); },
+      'scan-speed': () => { this.filterOptions.scanSpeed = parseFloat(value); },
+      
+      // Artistic filters - these map to nested objects
+      'brush-size': () => { this.updateArtisticParam('brushSize', parseInt(value)); },
+      'stroke-length': () => { this.updateArtisticParam('strokeLength', parseInt(value)); },
+      'texture-strength': () => { this.updateArtisticParam('textureStrength', parseFloat(value)); },
+      'color-smearing': () => { this.updateArtisticParam('colorSmearing', parseFloat(value)); },
+      'bleed-amount': () => { this.updateArtisticParam('bleedAmount', parseFloat(value)); },
+      'pigment-density': () => { this.updateArtisticParam('pigmentDensity', parseFloat(value)); },
+      'edge-darkening': () => { this.updateArtisticParam('edgeDarkening', parseFloat(value)); },
+      'paper-texture': () => { this.updateArtisticParam('paperTexture', parseFloat(value)); },
+      'stroke-width': () => { this.updateArtisticParam('strokeWidth', parseInt(value)); },
+      'hatch-density': () => { this.updateArtisticParam('hatchDensity', parseFloat(value)); },
+      'sketch-edge-threshold': () => { this.updateArtisticParam('edgeThreshold', parseInt(value)); },
+      'graphite-shading': () => { this.updateArtisticParam('graphiteShading', parseFloat(value)); },
+      'tile-size': () => { this.updateArtisticParam('tileSize', parseInt(value)); },
+      'grout-thickness': () => { this.updateArtisticParam('groutThickness', parseInt(value)); },
+      'mosaic-color-variation': () => { this.updateArtisticParam('colorVariation', parseFloat(value)); },
+      'grout-color': () => { this.updateArtisticParam('groutColor', FilterControlsUI.hexToRgb(value)); },
+      'cell-size': () => { this.updateArtisticParam('cellSize', parseInt(value)); },
+      'border-thickness': () => { this.updateArtisticParam('borderThickness', parseInt(value)); },
+      'border-color': () => { this.updateArtisticParam('borderColor', FilterControlsUI.hexToRgb(value)); },
+      'light-refraction': () => { this.updateArtisticParam('lightRefraction', parseFloat(value)); },
+      'ink-outline-strength': () => { this.updateArtisticParam('inkOutlineStrength', parseFloat(value)); },
+      'color-levels': () => { this.updateArtisticParam('colorLevels', parseInt(value)); },
+      'halftone-dot-size': () => { this.updateArtisticParam('halftoneDotSize', parseInt(value)); },
+      'comic-edge-threshold': () => { this.updateArtisticParam('edgeThreshold', parseInt(value)); },
+      'line-spacing': () => { this.updateArtisticParam('lineSpacing', parseInt(value)); },
+      'line-thickness': () => { this.updateArtisticParam('lineThickness', parseInt(value)); },
+      'angle-variation': () => { this.updateArtisticParam('angleVariation', parseFloat(value)); },
+      'hatch-darkness': () => { this.updateArtisticParam('hatchDarkness', parseFloat(value)); },
+      'background-lightness': () => { this.updateArtisticParam('backgroundLightness', parseFloat(value)); },
+      'dot-size': () => { this.updateArtisticParam('dotSize', parseInt(value)); },
+      'density': () => { this.updateArtisticParam('density', parseFloat(value)); },
+      'pointillism-color-variation': () => { this.updateArtisticParam('colorVariation', parseFloat(value)); },
+      'dot-shape': () => { this.updateArtisticParam('dotShape', value); },
+      'background-brightness': () => { this.updateArtisticParam('backgroundBrightness', parseFloat(value)); },
+      
+      // Atmospheric filters
+      'fog-density': () => { this.filterOptions.fogDensity = parseFloat(value); },
+      'fog-color': () => { this.filterOptions.fogColor = FilterControlsUI.hexToRgb(value); },
+      'rain-density': () => { this.filterOptions.rainDensity = parseFloat(value); },
+      'rain-length': () => { this.filterOptions.rainLength = parseInt(value); },
+      'snow-density': () => { this.filterOptions.snowDensity = parseFloat(value); },
+      'snow-size': () => { this.filterOptions.snowSize = parseInt(value); },
+      'dust-density': () => { this.filterOptions.dustDensity = parseFloat(value); },
+      'dust-color': () => { this.filterOptions.dustColor = FilterControlsUI.hexToRgb(value); },
+      'distortion-strength': () => { this.filterOptions.distortionStrength = parseInt(value); },
+      'bubble-density': () => { this.filterOptions.bubbleDensity = parseFloat(value); },
+      'wave-strength': () => { this.filterOptions.waveStrength = parseInt(value); },
+      'lightning-chance': () => { this.filterOptions.lightningChance = parseFloat(value); },
+      
+      // Experimental filters
+      'segments': () => { this.filterOptions.segments = parseInt(value); },
+      'iterations': () => { this.filterOptions.iterations = parseInt(value); },
+      'zoom': () => { this.filterOptions.zoom = parseFloat(value); },
+      'tunnel-speed': () => { this.filterOptions.tunnelSpeed = parseFloat(value); },
+      'warp-strength': () => { this.filterOptions.warpStrength = parseInt(value); },
+      'shift-amount': () => { this.filterOptions.shiftAmount = parseInt(value); },
+      'bend-strength': () => { this.filterOptions.bendStrength = parseFloat(value); },
+      'mirror-type': () => { this.filterOptions.mirrorType = value; },
+      'glitch-density': () => { this.filterOptions.glitchDensity = parseFloat(value); }
+    };
+    
+    // Execute the mapping if it exists
+    const handler = paramMap[controlId];
+    if (handler) {
+      handler();
+    }
+  }
+  
+  /**
+   * Helper to update artistic filter parameters
+   */
+  updateArtisticParam(paramName, value) {
+    const style = this.filterOptions.artisticStyle;
+    if (!this.filterOptions.artisticParams[style]) {
+      this.filterOptions.artisticParams[style] = {};
+    }
+    this.filterOptions.artisticParams[style][paramName] = value;
+  }
+  
+  /**
+   * Show/hide filter-specific controls based on selected filter
    */
   showFilterControls(filterType) {
-    // Hide all filter controls first
-    const controlContainers = [
-      'pop-art-controls',
-      'vintage-controls', 
-      'motion-blur-controls',
-      'halftone-controls',
-      'cyberpunk-controls',
-      'artistic-controls',
-      'atmospheric-controls',
-      'experimental-controls'
-    ];
+    console.log('🎨 showFilterControls called with:', filterType);
     
-    controlContainers.forEach(id => {
-      const element = document.getElementById(id);
-      if (element) element.style.display = 'none';
+    // Update UI visibility using the filter controls UI system
+    FilterControlsUI.updateControlVisibility(filterType);
+    
+    // Also update dynamic controls if needed
+    this.updateFilterControls(filterType);
+    
+    // Hide all filter-specific controls first
+    const allFilterControls = document.querySelectorAll('.filter-controls');
+    allFilterControls.forEach(control => {
+      control.style.display = 'none';
     });
     
-    // Show relevant controls
-    switch (filterType) {
+    // Parse filter type to get base filter
+    const [baseFilter] = filterType.includes('-') ? 
+      filterType.split('-', 2) : [filterType, null];
+    
+    // Show relevant controls based on filter type
+    switch (baseFilter) {
       case 'popArt':
         const popArtControls = document.getElementById('pop-art-controls');
-        if (popArtControls) popArtControls.style.display = 'block';
+        if (popArtControls) {
+          popArtControls.style.display = 'block';
+          console.log('  ✅ Showing pop-art-controls');
+        }
         break;
         
       case 'vintage':
         const vintageControls = document.getElementById('vintage-controls');
-        if (vintageControls) vintageControls.style.display = 'block';
+        if (vintageControls) {
+          vintageControls.style.display = 'block';
+          console.log('  ✅ Showing vintage-controls');
+        }
         break;
         
       case 'motionBlur':
         const motionBlurControls = document.getElementById('motion-blur-controls');
-        if (motionBlurControls) motionBlurControls.style.display = 'block';
+        if (motionBlurControls) {
+          motionBlurControls.style.display = 'block';
+          this.showMotionBlurOptions(this.filterOptions.motionBlur.direction);
+          console.log('  ✅ Showing motion-blur-controls');
+        }
         break;
         
       case 'halftone':
         const halftoneControls = document.getElementById('halftone-controls');
-        if (halftoneControls) halftoneControls.style.display = 'block';
+        if (halftoneControls) {
+          halftoneControls.style.display = 'block';
+          console.log('  ✅ Showing halftone-controls');
+        }
         break;
         
-      // NEW: Show controls for new filter categories
-      case 'cyberpunk':
-        const cyberpunkControls = document.getElementById('cyberpunk-controls');
-        if (cyberpunkControls) cyberpunkControls.style.display = 'block';
+      case 'liquify':
+        const liquifyControls = document.getElementById('liquify-controls');
+        if (liquifyControls) {
+          liquifyControls.style.display = 'block';
+          console.log('  ✅ Showing liquify-controls');
+        }
+        break;
+        
+      case 'colorGrading':
+        const colorGradingControls = document.getElementById('color-grading-controls');
+        if (colorGradingControls) {
+          colorGradingControls.style.display = 'block';
+          console.log('  ✅ Showing color-grading-controls');
+        }
+        break;
+        
+      case 'noise':
+        const noiseControls = document.getElementById('noise-controls');
+        if (noiseControls) {
+          noiseControls.style.display = 'block';
+          console.log('  ✅ Showing noise-controls');
+        }
         break;
         
       case 'artistic':
         const artisticControls = document.getElementById('artistic-controls');
-        if (artisticControls) artisticControls.style.display = 'block';
+        if (artisticControls) {
+          artisticControls.style.display = 'block';
+          console.log('  ✅ Showing artistic-controls');
+        }
+        break;
+        
+      case 'emboss':
+        const embossControls = document.getElementById('emboss-controls');
+        if (embossControls) {
+          embossControls.style.display = 'block';
+          console.log('  ✅ Showing emboss-controls');
+        }
+        break;
+        
+      case 'edgeDetect':
+        const edgeDetectControls = document.getElementById('edge-detect-controls');
+        if (edgeDetectControls) {
+          edgeDetectControls.style.display = 'block';
+          console.log('  ✅ Showing edge-detect-controls');
+        }
+        break;
+        
+      case 'vignette':
+        const vignetteControls = document.getElementById('vignette-controls');
+        if (vignetteControls) {
+          vignetteControls.style.display = 'block';
+          console.log('  ✅ Showing vignette-controls');
+        }
+        break;
+        
+      case 'cyberpunk':
+        const cyberpunkControls = document.getElementById('cyberpunk-controls');
+        if (cyberpunkControls) {
+          cyberpunkControls.style.display = 'block';
+          console.log('  ✅ Showing cyberpunk-controls');
+        }
         break;
         
       case 'atmospheric':
         const atmosphericControls = document.getElementById('atmospheric-controls');
-        if (atmosphericControls) atmosphericControls.style.display = 'block';
+        if (atmosphericControls) {
+          atmosphericControls.style.display = 'block';
+          console.log('  ✅ Showing atmospheric-controls');
+        }
         break;
         
       case 'experimental':
         const experimentalControls = document.getElementById('experimental-controls');
-        if (experimentalControls) experimentalControls.style.display = 'block';
+        if (experimentalControls) {
+          experimentalControls.style.display = 'block';
+          console.log('  ✅ Showing experimental-controls');
+        }
+        break;
+        
+      default:
+        console.log('ℹ️ No additional controls needed for:', filterType);
+        break;
+    }
+    
+    console.log('✅ showFilterControls completed for:', filterType);
+  }
+  
+  /**
+   * Show/hide motion blur specific options based on direction
+   */
+  showMotionBlurOptions(direction) {
+    const customAngleControls = document.getElementById('motion-blur-custom-angle-controls');
+    const radialControls = document.getElementById('motion-blur-radial-controls');
+    
+    // Hide all optional controls first
+    if (customAngleControls) customAngleControls.style.display = 'none';
+    if (radialControls) radialControls.style.display = 'none';
+    
+    // Show relevant controls based on direction
+    switch (direction) {
+      case 'custom':
+        if (customAngleControls) customAngleControls.style.display = 'block';
+        break;
+      case 'radial':
+        if (radialControls) radialControls.style.display = 'block';
         break;
     }
   }
+  
+  /**
+   * Setup controls for the artistic filter styles.
+   */
+  setupArtisticControls() {
+    // The style is now determined by the main filter dropdown selection
+    // No need for a separate artistic style selector
+  }
+
+  /**
+   * Update the UI to show controls specific to the selected artistic style.
+   * @param {string} styleName - The name of the selected artistic style (e.g., 'oil_painting').
+   */
+  updateArtisticStyleSpecificUI(styleName) {
+    const container = document.getElementById('artistic-style-controls-container');
+    if (!container) return;
+
+    // Clear previous controls
+    container.innerHTML = '';
+
+    const paramConfigs = this.artisticParamsConfig[styleName];
+    if (!paramConfigs) return;
+
+    const targetOptionsObject = this.filterOptions.artisticParams[styleName];
+
+    for (const paramKey in paramConfigs) {
+      const config = paramConfigs[paramKey];
+      // Simple conversion from camelCase to Title Case for the label
+      const labelText = paramKey.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+
+      let controlElement = null;
+      switch (config.type) {
+        case 'slider':
+          controlElement = this._createSliderControl(labelText, paramKey, config, targetOptionsObject);
+          break;
+        case 'color':
+          controlElement = this._createColorPickerControl(labelText, paramKey, config, targetOptionsObject);
+          break;
+        case 'dropdown':
+          controlElement = this._createDropdownControl(labelText, paramKey, config, targetOptionsObject);
+          break;
+      }
+
+      if (controlElement) {
+        container.appendChild(controlElement);
+      }
+    }
+  }
+
+  // --- UI Helper Functions for Dynamic Controls ---
+
+  _createSliderControl(labelText, paramKey, config, targetOptionsObject) {
+    const currentValue = targetOptionsObject[paramKey];
+
+    const controlRow = document.createElement('div');
+    controlRow.className = 'control-row';
+
+    const sliderContainer = document.createElement('div');
+    sliderContainer.className = 'slider-container';
+
+    const sliderLabelDiv = document.createElement('div');
+    sliderLabelDiv.className = 'slider-label';
+
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = labelText;
+    sliderLabelDiv.appendChild(labelSpan);
+
+    const valueSpan = document.createElement('span');
+    valueSpan.className = 'slider-value';
+    valueSpan.id = `artistic-${paramKey}-value`;
+    valueSpan.textContent = `${currentValue}${config.unit || ''}`;
+    sliderLabelDiv.appendChild(valueSpan);
+
+    sliderContainer.appendChild(sliderLabelDiv);
+
+    const sliderInput = document.createElement('input');
+    sliderInput.type = 'range';
+    sliderInput.className = 'control-slider';
+    sliderInput.min = config.min;
+    sliderInput.max = config.max;
+    sliderInput.step = config.step || 1;
+    sliderInput.value = currentValue;
+    sliderInput.id = `artistic-${paramKey}-slider`;
+
+    sliderInput.addEventListener('input', (e) => {
+      const value = parseFloat(e.target.value);
+      targetOptionsObject[paramKey] = value;
+      valueSpan.textContent = config.unit ? `${value}${config.unit}` : value;
+    });
+
+    sliderContainer.appendChild(sliderInput);
+    controlRow.appendChild(sliderContainer);
+    return controlRow;
+  }
+
+  _createColorPickerControl(labelText, paramKey, config, targetOptionsObject) {
+    const currentValue = targetOptionsObject[paramKey];
+
+    const controlRow = document.createElement('div');
+    controlRow.className = 'control-row';
+
+    const label = document.createElement('label');
+    label.textContent = labelText;
+    label.htmlFor = `artistic-${paramKey}-color`;
+    controlRow.appendChild(label);
+
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.id = `artistic-${paramKey}-color`;
+    colorInput.value = currentValue;
+    colorInput.className = 'control-color-picker';
+    colorInput.style.width = '100%';
+    colorInput.style.height = '40px';
+    colorInput.style.marginTop = '5px';
+    colorInput.style.cursor = 'pointer';
+
+    colorInput.addEventListener('input', (e) => {
+      targetOptionsObject[paramKey] = e.target.value;
+    });
+
+    controlRow.appendChild(colorInput);
+    return controlRow;
+  }
+
+  _createDropdownControl(labelText, paramKey, config, targetOptionsObject) {
+    const currentValue = targetOptionsObject[paramKey];
+
+    const controlRow = document.createElement('div');
+    controlRow.className = 'control-row';
+
+    const label = document.createElement('label');
+    label.textContent = labelText;
+    label.htmlFor = `artistic-${paramKey}-select`;
+    controlRow.appendChild(label);
+
+    const selectInput = document.createElement('select');
+    selectInput.className = 'control-select';
+    selectInput.id = `artistic-${paramKey}-select`;
+
+    config.options.forEach(opt => {
+      const optionEl = document.createElement('option');
+      optionEl.value = typeof opt === 'object' ? opt.value : opt;
+      optionEl.textContent = typeof opt === 'object' ? opt.label : opt;
+      if (optionEl.value === currentValue) {
+        optionEl.selected = true;
+      }
+      selectInput.appendChild(optionEl);
+    });
+
+    selectInput.addEventListener('change', (e) => {
+      targetOptionsObject[paramKey] = e.target.value;
+    });
+
+    controlRow.appendChild(selectInput);
+    return controlRow;
+  }
+
+  _createToggleControl(labelText, paramKey, config, targetOptionsObject) {
+    const currentValue = targetOptionsObject[paramKey];
+
+    const controlRow = document.createElement('div');
+    controlRow.className = 'control-row toggle-control'; // Add a specific class for styling
+
+    const label = document.createElement('label');
+    label.textContent = labelText;
+    const toggleId = `filter-${paramKey}-toggle`;
+    label.htmlFor = toggleId;
+    controlRow.appendChild(label);
+
+    const toggleSwitch = document.createElement('div');
+    toggleSwitch.className = 'toggle-switch';
+
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.id = toggleId;
+    input.checked = currentValue;
+
+    const slider = document.createElement('span');
+    slider.className = 'slider round';
+
+    toggleSwitch.appendChild(input);
+    toggleSwitch.appendChild(slider);
+
+    input.addEventListener('change', (e) => {
+      targetOptionsObject[paramKey] = e.target.checked;
+    });
+
+    controlRow.appendChild(toggleSwitch);
+    return controlRow;
+  }
+
+
 
   /**
    * Start animation loop
@@ -490,8 +1303,9 @@ class GlitcherApp {
       this.spawnNewClumps();
     }
 
-    // Get current selection mask for effects
-    const selectionMask = this.selectionManager.getSelectionMask();
+    // Get current selection mask for effects (only used in manual mode)
+    const selectionMask = this.selectionManager.isInManualMode() ? 
+      this.selectionManager.getSelectionMask() : null;
 
     // Process active clumps (destructive effects)
     this.activeClumps.forEach(clump => {
@@ -501,7 +1315,7 @@ class GlitcherApp {
           clump,
           this.testSpeed,
           this.testDirection,
-          selectionMask  // Pass selection mask to effect
+          selectionMask  // Pass selection mask to effect (null for automatic mode)
         );
       }
       
@@ -516,7 +1330,7 @@ class GlitcherApp {
           this.testSwirlStrength,
           swirlType,
           this.spiralDirection,
-          selectionMask  // Pass selection mask to effect
+          selectionMask  // Pass selection mask to effect (null for automatic mode)
         );
       }
       
@@ -711,10 +1525,15 @@ class GlitcherApp {
     this.isPaused = true;
     this.updatePlayPauseButton();
   }
+  
+
 }
 
 // Initialize and start the application
 const app = new GlitcherApp();
+
+// Expose app instance globally (needed for panel state restoration)
+window.glitcherApp = app;
 
 // Wait for DOM to be ready
 if (document.readyState === 'loading') {
@@ -723,10 +1542,7 @@ if (document.readyState === 'loading') {
   app.init();
 }
 
-// Expose app instance for debugging
-window.glitcherApp = app;
-
-// Expose showFilterControls for presets
+// Expose showFilterControls for presets and panel state restoration
 app.showFilterControls = app.showFilterControls.bind(app);
 
 // Expose debug function globally

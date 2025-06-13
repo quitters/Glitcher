@@ -488,17 +488,28 @@ export class EnhancedCanvasInteraction {
     const canvas = this.canvasManager.canvas;
     if (!canvas) return;
     
+    // Get canvas position and dimensions
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = rect.width / this.canvasManager.imgWidth;
+    const scaleY = rect.height / this.canvasManager.imgHeight;
+    
+    // Convert canvas coordinates to screen coordinates relative to canvas position
+    const screenX = rect.left + (coords.x * scaleX);
+    const screenY = rect.top + (coords.y * scaleY);
+    const screenSize = size * Math.min(scaleX, scaleY); // Use smaller scale to maintain aspect ratio
+    
     const ripple = document.createElement('div');
     ripple.style.cssText = `
-      position: absolute;
-      left: ${coords.x - size/2}px;
-      top: ${coords.y - size/2}px;
-      width: ${size}px;
-      height: ${size}px;
+      position: fixed;
+      left: ${screenX - screenSize/2}px;
+      top: ${screenY - screenSize/2}px;
+      width: ${screenSize}px;
+      height: ${screenSize}px;
       border: 2px solid rgba(78, 205, 196, 0.6);
       border-radius: 50%;
       pointer-events: none;
       animation: ripple-expand 0.6s ease-out forwards;
+      z-index: 1000;
     `;
     
     // Add ripple animation if not exists
@@ -520,7 +531,8 @@ export class EnhancedCanvasInteraction {
       document.head.appendChild(style);
     }
     
-    canvas.parentNode.appendChild(ripple);
+    // Append to document body since we're using fixed positioning
+    document.body.appendChild(ripple);
     
     setTimeout(() => {
       if (ripple.parentNode) {
@@ -548,21 +560,32 @@ export class EnhancedCanvasInteraction {
     const canvas = this.canvasManager.canvas;
     if (!canvas) return;
     
+    // Get canvas position and dimensions
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = rect.width / this.canvasManager.imgWidth;
+    const scaleY = rect.height / this.canvasManager.imgHeight;
+    
+    // Calculate sparkle position in canvas coordinates
     const angle = (index / 6) * Math.PI * 2;
     const distance = 20 + Math.random() * 20;
-    const x = coords.x + Math.cos(angle) * distance;
-    const y = coords.y + Math.sin(angle) * distance;
+    const canvasX = coords.x + Math.cos(angle) * distance;
+    const canvasY = coords.y + Math.sin(angle) * distance;
+    
+    // Convert canvas coordinates to screen coordinates relative to canvas position
+    const screenX = rect.left + (canvasX * scaleX);
+    const screenY = rect.top + (canvasY * scaleY);
     
     const sparkle = document.createElement('div');
     sparkle.innerHTML = '✨';
     sparkle.style.cssText = `
-      position: absolute;
-      left: ${x}px;
-      top: ${y}px;
+      position: fixed;
+      left: ${screenX}px;
+      top: ${screenY}px;
       font-size: 12px;
       pointer-events: none;
       animation: sparkle-fade 1s ease-out forwards;
       transform: translate(-50%, -50%);
+      z-index: 1000;
     `;
     
     // Add sparkle animation if not exists
@@ -588,7 +611,8 @@ export class EnhancedCanvasInteraction {
       document.head.appendChild(style);
     }
     
-    canvas.parentNode.appendChild(sparkle);
+    // Append to document body since we're using fixed positioning
+    document.body.appendChild(sparkle);
     
     setTimeout(() => {
       if (sparkle.parentNode) {
