@@ -1,0 +1,87 @@
+/**
+ * GlitchStudio2 - Context Menu CSS
+ * Styling for the right-click context menu
+ */
+
+.context-menu {
+  position: fixed;
+  background-color: var(--bg-color);
+  border-radius: var(--border-radius);
+  box-shadow: 
+    var(--neu-distance) var(--neu-distance) var(--neu-blur) var(--neu-shadow-dark),
+    calc(-1 * var(--neu-distance)) calc(-1 * var(--neu-distance)) var(--neu-blur) var(--neu-shadow-light);
+  min-width: 150px;
+  z-index: 1000;
+  opacity: 0;
+  transform: scale(0.95);
+  transform-origin: top left;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  display: none;
+}
+
+.context-menu.show {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+  display: block;
+}
+
+body.dark-mode .context-menu {
+  background-color: var(--dark-bg-color);
+  box-shadow: 
+    var(--neu-distance) var(--neu-distance) var(--neu-blur) var(--dark-neu-shadow-dark),
+    calc(-1 * var(--neu-distance)) calc(-1 * var(--neu-distance)) var(--neu-blur) var(--dark-neu-shadow-light);
+}
+
+.context-menu-item {
+  padding: 8px 15px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.context-menu-item:first-child {
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+}
+
+.context-menu-item:last-child {
+  border-bottom-left-radius: var(--border-radius);
+  border-bottom-right-radius: var(--border-radius);
+}
+
+.context-menu-item:hover {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+.context-menu-item .icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.context-menu-divider {
+  height: 1px;
+  background-color: rgba(0, 0, 0, 0.1);
+  margin: 5px 0;
+}
+
+body.dark-mode .context-menu-divider {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.context-menu-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.context-menu-item.disabled:hover {
+  background-color: transparent;
+  color: var(--text-color);
+}
+
+body.dark-mode .context-menu-item.disabled:hover {
+  color: var(--dark-text-color);
+}

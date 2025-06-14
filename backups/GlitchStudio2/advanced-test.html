@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitchStudio2 - Advanced Test</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="stylesheet" href="css/neumorphic.css">
+    <link rel="stylesheet" href="css/modal.css">
+    <link rel="stylesheet" href="css/presets.css">
+    <link rel="stylesheet" href="css/animations.css">
+</head>
+<body class="dark-mode">
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1 class="app-title">GlitchStudio2</h1>
+            <div class="header-actions">
+                <button id="theme-toggle" class="icon-btn" title="Toggle theme">🌓</button>
+                <button id="help-btn" class="icon-btn" title="Help">❓</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Controls Panel -->
+            <aside class="controls-panel">
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button id="new-image-btn" class="quick-action-btn">📁 New Image</button>
+                    <button id="quick-save-btn" class="quick-action-btn">💾 Save</button>
+                    <button id="quick-reset-btn" class="quick-action-btn">🔄 Reset</button>
+                    <button id="clear-effects-btn" class="quick-action-btn">🗑️ Clear</button>
+                </div>
+
+                <!-- Effect Categories -->
+                <div class="effect-categories">
+                    <button class="tab-button active" data-category="all">All</button>
+                    <button class="tab-button" data-category="glitch">Glitch</button>
+                    <button class="tab-button" data-category="color">Color</button>
+                    <button class="tab-button" data-category="filter">Filter</button>
+                    <button class="tab-button" data-category="artistic">Artistic</button>
+                    <button class="tab-button" data-category="experimental">Experimental</button>
+                </div>
+
+                <!-- Effects Container -->
+                <div id="effects-container" class="effects-container">
+                    <!-- Effects will be dynamically added here -->
+                </div>
+
+                <!-- Global Controls -->
+                <div class="global-controls">
+                    <label for="global-intensity">Global Intensity</label>
+                    <input type="range" id="global-intensity" min="0" max="100" value="100">
+                    <span id="global-intensity-value">100</span>%
+                </div>
+            </aside>
+
+            <!-- Canvas Area -->
+            <section class="canvas-section">
+                <div class="canvas-container">
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <div id="canvas-placeholder" class="canvas-placeholder">
+                        <div class="placeholder-content">
+                            <span class="placeholder-icon">🖼️</span>
+                            <p>Drop an image here or click to upload</p>
+                            <input type="file" id="image-input" accept="image/*" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Effect Chain -->
+                <div class="effect-chain-container">
+                    <h3>Effect Chain</h3>
+                    <div id="effect-chain" class="effect-chain">
+                        <div class="chain-empty">No effects applied</div>
+                    </div>
+                </div>
+
+                <!-- Advanced Features -->
+                <div class="advanced-features">
+                    <button id="audio-reactive-btn" class="feature-btn">🎵 Audio Reactive</button>
+                    <button id="batch-export-btn" class="feature-btn">📦 Batch Export</button>
+                    <button id="record-btn" class="feature-btn">🎥 Record</button>
+                </div>
+            </section>
+
+            <!-- Presets Panel -->
+            <aside class="presets-panel">
+                <h3>Presets</h3>
+                <div class="preset-actions">
+                    <button id="save-preset-btn" class="preset-action-btn">Save Current</button>
+                    <button id="import-preset-btn" class="preset-action-btn">Import</button>
+                    <button id="export-preset-btn" class="preset-action-btn">Export</button>
+                </div>
+                <div id="presets-list" class="presets-list">
+                    <!-- Presets will be dynamically added here -->
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- JavaScript -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

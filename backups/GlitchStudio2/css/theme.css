@@ -1,0 +1,125 @@
+/**
+ * GlitchStudio2 - Theme Variables
+ * CSS Custom Properties for theming
+ */
+
+:root {
+  /* Light Theme Colors */
+  --bg-color: #f5f5f5;
+  --text-color: #333333;
+  --header-bg: #ffffff;
+  --panel-bg: #ffffff;
+  --canvas-bg: #f0f0f0;
+  --control-bg: #ffffff;
+  --control-header-bg: #f8f8f8;
+  --control-body-bg: #ffffff;
+  --border-color: #e0e0e0;
+  --accent-color: #4ecdc4;
+  --secondary-color: #ff6b6b;
+  
+  /* UI Elements */
+  --button-bg: #e8e8e8;
+  --button-hover-bg: #d0d0d0;
+  --tab-bg: #e8e8e8;
+  --tab-hover-bg: #d0d0d0;
+  --input-bg: #ffffff;
+  --slider-bg: #e0e0e0;
+  --chain-bg: #f5f5f5;
+  --feature-btn-bg: #e8e8e8;
+  
+  /* Text Colors */
+  --label-color: #666666;
+  --placeholder-color: #999999;
+  
+  /* Shadows */
+  --neumorphic-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1), -2px -2px 5px rgba(255, 255, 255, 0.7);
+  --neumorphic-shadow-hover: 3px 3px 7px rgba(0, 0, 0, 0.15), -3px -3px 7px rgba(255, 255, 255, 0.8);
+  
+  /* Scrollbar */
+  --scrollbar-track: #f0f0f0;
+  --scrollbar-thumb: #cccccc;
+  --scrollbar-thumb-hover: #999999;
+}
+
+/* Dark Theme */
+body.dark-mode {
+  --bg-color: #1a1a2e;
+  --text-color: #eaeaea;
+  --header-bg: #16213e;
+  --panel-bg: #16213e;
+  --canvas-bg: #0f3460;
+  --control-bg: #1f2937;
+  --control-header-bg: #2d3748;
+  --control-body-bg: #1a202c;
+  --border-color: #2d3748;
+  --accent-color: #4ecdc4;
+  --secondary-color: #ff6b6b;
+  
+  /* UI Elements */
+  --button-bg: #2d3748;
+  --button-hover-bg: #4a5568;
+  --tab-bg: #2d3748;
+  --tab-hover-bg: #4a5568;
+  --input-bg: #2d3748;
+  --slider-bg: #4a5568;
+  --chain-bg: #2d3748;
+  --feature-btn-bg: #2d3748;
+  
+  /* Text Colors */
+  --label-color: #a0aec0;
+  --placeholder-color: #718096;
+  
+  /* Shadows */
+  --neumorphic-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4), -3px -3px 6px rgba(255, 255, 255, 0.05);
+  --neumorphic-shadow-hover: 5px 5px 10px rgba(0, 0, 0, 0.5), -5px -5px 10px rgba(255, 255, 255, 0.08);
+  
+  /* Scrollbar */
+  --scrollbar-track: #2d3748;
+  --scrollbar-thumb: #4a5568;
+  --scrollbar-thumb-hover: #718096;
+}
+
+/* Dark Mode Specific Styles */
+body.dark-mode {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+body.dark-mode .app-header {
+  background-color: var(--header-bg);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .control-group {
+  background-color: var(--control-bg);
+}
+
+body.dark-mode .effect-toggle:checked {
+  box-shadow: 0 0 5px var(--accent-color);
+}
+
+body.dark-mode input[type="range"]::-webkit-slider-thumb {
+  box-shadow: 0 0 5px rgba(78, 205, 196, 0.5);
+}
+
+body.dark-mode .canvas-placeholder {
+  background-color: rgba(15, 52, 96, 0.5);
+}
+
+body.dark-mode #canvas {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Accent Color Variations */
+.accent-teal { --accent-color: #4ecdc4; }
+.accent-coral { --accent-color: #ff6b6b; }
+.accent-purple { --accent-color: #a855f7; }
+.accent-blue { --accent-color: #3b82f6; }
+.accent-green { --accent-color: #10b981; }
+
+/* Transitions */
+* {
+  transition-property: background-color, color, border-color, box-shadow;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
+}

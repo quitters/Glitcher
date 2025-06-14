@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Effects Studio</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #ffffff;
+      overflow-x: auto;
+    }
+
+    .studio-container {
+      display: grid;
+      grid-template-columns: 450px 1fr;
+      min-height: 100vh;
+      gap: 20px;
+      padding: 20px;
+    }
+
+    /* Control Panel Styling */
+    .control-panel {
+      background: linear-gradient(145deg, #2a2a40, #1f1f35);
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 
+        inset -5px -5px 10px rgba(0,0,0,0.3),
+        inset 5px 5px 10px rgba(255,255,255,0.1),
+        0 20px 40px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.1);
+      overflow-y: auto;
+      max-height: calc(100vh - 40px);
+    }
+
+    .panel-header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid rgba(255,255,255,0.1);
+    }
+
+    .panel-title {
+      font-size: 24px;
+      font-weight: bold;
+      background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    .panel-subtitle {
+      font-size: 14px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Category Tabs */
+    .category-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 25px;
+    }
+
+    .tab-button {
+      background: linear-gradient(145deg, #2a2a40, #1f1f35);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 12px 8px;
+      color: #888;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .tab-button.active {
+      background: linear-gradient(145deg, #4ecdc4, #45b7d1);
+      color: white;
+      border-color: #4ecdc4;
+      box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
+    }
+
+    .tab-button:hover:not(.active) {
+      border-color: #4ecdc4;
+      color: #4ecdc4;
+    }
+
+    /* Effect Chain */
+    .effect-chain {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 15px;
+      min-height: 40px;
+      padding: 10px;
+      background: linear-gradient(145deg, #1a1a30, #252540);
+      border-radius: 8px;
+      border: 1px dashed rgba(255,255,255,0.2);
+    }
+
+    .effect-pill {
+      background: linear-gradient(145deg, #4ecdc4, #45b7d1);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: slideIn 0.3s ease;
+    }
+
+    .effect-pill button {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(-20px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Control Groups */
+    .control-group {
+      background: linear-gradient(145deg, #1f1f35, #2a2a40);
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 15px;
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 
+        inset 2px 2px 5px rgba(0,0,0,0.3),
+        inset -2px -2px 5px rgba(255,255,255,0.05);
+      transition: all 0.3s ease;
+    }
+
+    .control-group.collapsed {
+      padding-bottom: 20px;
+    }
+
+    .group-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #ff6b6b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .effect-toggle {
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(145deg, #2a2a40, #1f1f35);
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 4px;
+      cursor: pointer;
+      position: relative;
+      -webkit-appearance: none;
+    }
+
+    .effect-toggle:checked {
+      background: linear-gradient(145deg, #4ecdc4, #45b7d1);
+      border-color: #4ecdc4;
+    }
+
+    .effect-toggle:checked::after {
+      content: '✓';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .expand-btn {
+      background: none;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: auto;
+      transition: transform 0.3s ease;
+    }
+
+    .expand-btn.expanded {
+      transform: rotate(180deg);
+    }
+
+    .effect-controls {
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .effect-controls.collapsed {
+      max-height: 0;
+      opacity: 0;
+      margin-top: 0;
+    }
+
+    .effect-controls:not(.collapsed) {
+      max-height: 500px;
+      opacity: 1;
+      margin-top: 15px;
+    }
+
+    /* File Upload Styling - Same as Glitcher */
+    .file-upload-area {
+      border: 2px dashed rgba(255,255,255,0.3);
+      border-radius: 12px;
+      padding: 30px 20px;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      background: linear-gradient(145deg, #1a1a30, #252540);
+    }
+
+    .file-upload-area:hover {
+      border-color: #4ecdc4;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(78, 205, 196, 0.2);
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+      color: #4ecdc4;
+    }
+
+    .upload-text {
+      font-size: 16px;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    .upload-hint {
+      font-size: 12px;
+      color: #888;
+    }
+
+    #image-input {
+      display: none;
+    }
+
+    /* Slider Styling - Same as Glitcher */
+    .slider-container {
+      margin-bottom: 15px;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .slider-value {
+      background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 16px;
+      min-width: 50px;
+      text-align: right;
+    }
+
+    .control-slider {
+      width: 100%;
+      height: 8px;
+      border-radius: 5px;
+      background: linear-gradient(to right, #1f1f35, #2a2a40);
+      outline: none;
+      cursor: pointer;
+      -webkit-appearance: none;
+    }
+
+    .control-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #4ecdc4, #45b7d1);
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+
+    /* Button Styling - Same as Glitcher */
+    .control-button {
+      background: linear-gradient(145deg, #4ecdc4, #45b7d1);
+      border: none;
+      border-radius: 12px;
+      padding: 12px 20px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 6px 15px rgba(78, 205, 196, 0.3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 12px;
+      margin: 5px;
+      width: 100%;
+    }
+
+    .control-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(78, 205, 196, 0.4);
+    }
+
+    .danger-button {
+      background: linear-gradient(145deg, #ff6b6b, #ff5252);
+    }
+
+    .success-button {
+      background: linear-gradient(145deg, #66bb6a, #4caf50);
+    }
+
+    /* Canvas Area - Same as Glitcher */
+    .canvas-area {
+      background: linear-gradient(145deg, #2a2a40, #1f1f35);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 
+        inset -5px -5px 10px rgba(0,0,0,0.3),
+        inset 5px 5px 10px rgba(255,255,255,0.1),
+        0 20px 40px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 600px;
+    }
+
+    .canvas-placeholder {
+      text-align: center;
+      color: #666;
+      font-size: 18px;
+    }
+
+    .canvas-placeholder-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      color: #444;
+    }
+
+    #canvas {
+      max-width: 100%;
+      max-height: 70vh;
+      border-radius: 15px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+      border: 2px solid rgba(255,255,255,0.1);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+      .studio-container {
+        grid-template-columns: 400px 1fr;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .studio-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+      }
+      
+      .control-panel {
+        max-height: none;
+        order: 2;
+      }
+      
+      .canvas-area {
+        order: 1;
+        min-height: 400px;
+      }
+    }
+
+    /* Utility Classes */
+    .flex-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .text-small {
+      font-size: 12px;
+      color: #888;
+      margin-top: 5px;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="studio-container">
+    <!-- Control Panel -->
+    <div class="control-panel">
+      <div class="panel-header">
+        <div class="panel-title">Effects Studio</div>
+        <div class="panel-subtitle">Professional Image Processing Suite</div>
+      </div>
+
+      <!-- Image Upload -->
+      <div class="control-group">
+        <div class="group-title">📁 Image Source</div>
+        <div class="file-upload-area" onclick="document.getElementById('image-input').click()">
+          <div class="upload-icon">🖼️</div>
+          <div class="upload-text">Drop Image Here</div>
+          <div class="upload-hint">or click to browse</div>
+          <input type="file" id="image-input" accept="image/*">
+        </div>
+      </div>
+
+      <!-- Effect Chain -->
+      <div class="control-group">
+        <div class="group-title">🔗 Active Effect Chain</div>
+        <div class="effect-chain" id="effect-chain">
+          <div class="text-small" style="color: #666; margin: auto;">No effects active - toggle effects below</div>
+        </div>
+        <button class="control-button danger-button" id="clear-all-btn">🗑️ Clear All Effects</button>
+      </div>
+
+      <!-- Category Tabs -->
+      <div class="category-tabs">
+        <button class="tab-button active" data-category="artistic">🎨 Artistic</button>
+        <button class="tab-button" data-category="distortion">🌀 Distortion</button>
+        <button class="tab-button" data-category="color">🌈 Color</button>
+        <button class="tab-button" data-category="filter">🔍 Filter</button>
+        <button class="tab-button" data-category="experimental">⚗️ Experimental</button>
+        <button class="tab-button" data-category="global">⚙️ Global</button>
+      </div>
+
+      <!-- Effect Controls Container -->
+      <div id="effects-container">
+        <!-- Artistic Effects -->
+        <div class="control-group" data-category="artistic">
+          <div class="group-title" onclick="toggleEffect('halftone')">
+            <input type="checkbox" class="effect-toggle" id="halftone-toggle">
+            📰 Halftone Pattern
+            <button class="expand-btn" onclick="event.stopPropagation(); toggleControls('halftone')">▼</button>
+          </div>
+          <div class="effect-controls collapsed" id="halftone-controls">
+            <div class="slider-container">
+              <div class="slider-label">
+                <span>Dot Size</span>
+                <span id="halftone-dotsize-value" class="slider-value">8</span>
+              </div>
+              <input type="range" id="halftone-dotsize" class="control-slider" min="2" max="20" value="8">
+            </div>
+          </div>
+        </div>
+
+        <div class="control-group" data-category="artistic">
+          <div class="group-title" onclick="toggleEffect('swirl')">
+            <input type="checkbox" class="effect-toggle" id="swirl-toggle">
+            🌀 Swirl Effect
+            <button class="expand-btn" onclick="event.stopPropagation(); toggleControls('swirl')">▼</button>
+          </div>
+          <div class="effect-controls collapsed" id="swirl-controls">
+            <div class="slider-container">
+              <div class="slider-label">
+                <span>Intensity</span>
+                <span id="swirl-intensity-value" class="slider-value">0.314</span>
+              </div>
+              <input type="range" id="swirl-intensity" class="control-slider" min="0.1" max="2.0" step="0.1" value="0.314">
+            </div>
+          </div>
+        </div>
+
+        <!-- Distortion Effects -->
+        <div class="control-group" data-category="distortion">
+          <div class="group-title" onclick="toggleEffect('liquify')">
+            <input type="checkbox" class="effect-toggle" id="liquify-toggle">
+            💧 Liquify Warp
+            <button class="expand-btn" onclick="event.stopPropagation(); toggleControls('liquify')">▼</button>
+          </div>
+          <div class="effect-controls collapsed" id="liquify-controls">
+            <div class="slider-container">
+              <div class="slider-label">
+                <span>Warp Intensity</span>
+                <span id="liquify-intensity-value" class="slider-value">20</span>
+              </div>
+              <input type="range" id="liquify-intensity" class="control-slider" min="5" max="50" value="20">
+            </div>
+          </div>
+        </div>
+
+        <!-- Color Effects -->
+        <div class="control-group" data-category="color">
+          <div class="group-title" onclick="toggleEffect('sepia')">
+            <input type="checkbox" class="effect-toggle" id="sepia-toggle">
+            📸 Sepia Tone
+            <button class="expand-btn" onclick="event.stopPropagation(); toggleControls('sepia')">▼</button>
+          </div>
+          <div class="effect-controls collapsed" id="sepia-controls">
+            <div class="text-small">Classic sepia tone effect - no additional parameters</div>
+          </div>
+        </div>
+
+        <!-- Filter Effects -->
+        <div class="control-group" data-category="filter">
+          <div class="group-title" onclick="toggleEffect('vignette')">
+            <input type="checkbox" class="effect-toggle" id="vignette-toggle">
+            🎞️ Vignette
+            <button class="expand-btn" onclick="event.stopPropagation(); toggleControls('vignette')">▼</button>
+          </div>
+          <div class="effect-controls collapsed" id="vignette-controls">
+            <div class="slider-container">
+              <div class="slider-label">
+                <span>Strength</span>
+                <span id="vignette-strength-value" class="slider-value">0.3</span>
+              </div>
+              <input type="range" id="vignette-strength" class="control-slider" min="0.1" max="1.0" step="0.1" value="0.3">
+            </div>
+          </div>
+        </div>
+
+        <!-- Global Controls -->
+        <div class="control-group" data-category="global">
+          <div class="group-title">⚙️ Global Settings</div>
+          <div class="slider-container">
+            <div class="slider-label">
+              <span>🎚️ Global Intensity</span>
+              <span id="global-intensity-value" class="slider-value">100</span>
+            </div>
+            <input type="range" id="global-intensity" class="control-slider" min="0" max="200" value="100">
+          </div>
+          <div class="text-small">Affects the intensity of all active effects</div>
+        </div>
+
+        <div class="control-group" data-category="global">
+          <div class="group-title">🎮 Controls</div>
+          <div class="button-grid">
+            <button id="play-pause-btn" class="control-button success-button">⏸️ Pause</button>
+            <button id="reset-btn" class="control-button danger-button">🔄 Reset</button>
+          </div>
+          <button id="randomize-btn" class="control-button" style="width: 100%; margin-top: 10px;">🎲 Randomize Effects</button>
+        </div>
+
+        <div class="control-group" data-category="global">
+          <div class="group-title">📁 Export</div>
+          <div class="button-grid">
+            <button id="snapshot-btn" class="control-button">📷 Save Image</button>
+            <button id="batch-export-btn" class="control-button">📦 Batch Export</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas Area -->
+    <div class="canvas-area">
+      <canvas id="canvas" style="display: none;"></canvas>
+      <div id="canvas-placeholder" class="canvas-placeholder">
+        <div class="canvas-placeholder-icon">🎨</div>
+        <div>Upload an image to start applying effects</div>
+        <div class="text-small">Supports JPG, PNG, GIF formats</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========== Core Variables ==========
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const canvasPlaceholder = document.getElementById('canvas-placeholder');
+    const fileInput = document.getElementById('image-input');
+    const effectChain = document.getElementById('effect-chain');
+
+    let originalImageData = null;
+    let workingImageData = null;
+    let imgWidth = 0, imgHeight = 0;
+    let animationId = null;
+    let isPaused = false;
+    let frameCount = 0;
+
+    // Effect Registry
+    const EffectRegistry = {
+      effects: {},
+      activeEffects: [],
+      
+      register(name, category, processor, defaultParams = {}) {
+        this.effects[name] = {
+          name,
+          category,
+          processor,
+          enabled: false,
+          params: { ...defaultParams }
+        };
+      },
+      
+      enable(name) {
+        if (this.effects[name] && !this.effects[name].enabled) {
+          this.effects[name].enabled = true;
+          this.activeEffects.push(name);
+          this.updateEffectChain();
+        }
+      },
+      
+      disable(name) {
+        if (this.effects[name] && this.effects[name].enabled) {
+          this.effects[name].enabled = false;
+          this.activeEffects = this.activeEffects.filter(n => n !== name);
+          this.updateEffectChain();
+        }
+      },
+      
+      updateParam(name, param, value) {
+        if (this.effects[name]) {
+          this.effects[name].params[param] = value;
+        }
+      },
+      
+      updateEffectChain() {
+        const chainEl = document.getElementById('effect-chain');
+        if (this.activeEffects.length === 0) {
+          chainEl.innerHTML = '<div class="text-small" style="color: #666; margin: auto;">No effects active - toggle effects below</div>';
+        } else {
+          chainEl.innerHTML = this.activeEffects.map(name => `
+            <div class="effect-pill">
+              ${this.effects[name].name}
+              <button onclick="EffectRegistry.disable('${name}'); document.getElementById('${name}-toggle').checked = false;">×</button>
+            </div>
+          `).join('');
+        }
+      },
+      
+      processAll(imageData) {
+        let result = new ImageData(
+          new Uint8ClampedArray(imageData.data),
+          imageData.width,
+          imageData.height
+        );
+        
+        const globalIntensity = parseInt(document.getElementById('global-intensity').value) / 100;
+        
+        for (const effectName of this.activeEffects) {
+          const effect = this.effects[effectName];
+          if (effect && effect.enabled) {
+            result = effect.processor(result, effect.params, globalIntensity);
+          }
+        }
+        
+        return result;
+      }
+    };
+
+    // ========== Effect Processors ==========
+    
+    // Halftone Effect
+    function halftoneProcessor(imageData, params, globalIntensity) {
+      const { width, height, data } = imageData;
+      const dotSize = params.dotSize * globalIntensity;
+      const result = new ImageData(width, height);
+      
+      // Fill with white background
+      for (let i = 0; i < result.data.length; i += 4) {
+        result.data[i] = 255;     // R
+        result.data[i + 1] = 255; // G
+        result.data[i + 2] = 255; // B
+        result.data[i + 3] = 255; // A
+      }
+      
+      for (let y = 0; y < height; y += dotSize) {
+        for (let x = 0; x < width; x += dotSize) {
+          if (x < width && y < height) {
+            const index = (Math.floor(y) * width + Math.floor(x)) * 4;
+            const r = data[index];
+            const g = data[index + 1];
+            const b = data[index + 2];
+            const brightness = (r + g + b) / 3;
+            const radius = ((255 - brightness) / 255) * (dotSize / 2);
+            
+            // Draw circle
+            for (let dy = -radius; dy <= radius; dy++) {
+              for (let dx = -radius; dx <= radius; dx++) {
+                if (dx * dx + dy * dy <= radius * radius) {
+                  const newX = Math.floor(x + dx);
+                  const newY = Math.floor(y + dy);
+                  if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+                    const targetIndex = (newY * width + newX) * 4;
+                    result.data[targetIndex] = 128;     // Gray
+                    result.data[targetIndex + 1] = 128;
+                    result.data[targetIndex + 2] = 128;
+                    result.data[targetIndex + 3] = 255;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      return result;
+    }
+
+    // Swirl Effect
+    function swirlProcessor(imageData, params, globalIntensity) {
+      const { width, height, data } = imageData;
+      const intensity = params.intensity * globalIntensity;
+      const result = new ImageData(new Uint8ClampedArray(data), width, height);
+      
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const maxRadius = Math.sqrt(centerX * centerX + centerY * centerY);
+      
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const dx = x - centerX;
+          const dy = y - centerY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx);
+          
+          const swirlAngle = (distance / maxRadius) * Math.PI / intensity;
+          const newAngle = angle + swirlAngle;
+          
+          const sourceX = Math.round(centerX + distance * Math.cos(newAngle));
+          const sourceY = Math.round(centerY + distance * Math.sin(newAngle));
+          
+          if (sourceX >= 0 && sourceX < width && sourceY >= 0 && sourceY < height) {
+            const sourceIndex = (sourceY * width + sourceX) * 4;
+            const targetIndex = (y * width + x) * 4;
+            
+            result.data[targetIndex] = data[sourceIndex];
+            result.data[targetIndex + 1] = data[sourceIndex + 1];
+            result.data[targetIndex + 2] = data[sourceIndex + 2];
+            result.data[targetIndex + 3] = data[sourceIndex + 3];
+          }
+        }
+      }
+      
+      return result;
+    }
+
+    // Liquify Effect
+    function liquifyProcessor(imageData, params, globalIntensity) {
+      const { width, height, data } = imageData;
+      const intensity = params.intensity * globalIntensity;
+      const result = new ImageData(width, height);
+      
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const noise = Math.sin(x * 0.01) * Math.cos(y * 0.01);
+          const angle = noise * Math.PI * 2;
+          const offsetX = Math.cos(angle) * intensity;
+          const offsetY = Math.sin(angle) * intensity;
+          
+          const sourceX = Math.round(x + offsetX);
+          const sourceY = Math.round(y + offsetY);
+          
+          const targetIndex = (y * width + x) * 4;
+          
+          if (sourceX >= 0 && sourceX < width && sourceY >= 0 && sourceY < height) {
+            const sourceIndex = (sourceY * width + sourceX) * 4;
+            result.data[targetIndex] = data[sourceIndex];
+            result.data[targetIndex + 1] = data[sourceIndex + 1];
+            result.data[targetIndex + 2] = data[sourceIndex + 2];
+            result.data[targetIndex + 3] = data[sourceIndex + 3];
+          } else {
+            result.data[targetIndex] = 0;
+            result.data[targetIndex + 1] = 0;
+            result.data[targetIndex + 2] = 0;
+            result.data[targetIndex + 3] = 255;
+          }
+        }
+      }
+      
+      return result;
+    }
+
+    // Sepia Effect
+    function sepiaProcessor(imageData, params, globalIntensity) {
+      const { data } = imageData;
+      const result = new ImageData(new Uint8ClampedArray(data), imageData.width, imageData.height);
+      
+      for (let i = 0; i < result.data.length; i += 4) {
+        const r = result.data[i];
+        const g = result.data[i + 1];
+        const b = result.data[i + 2];
+        
+        const tr = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189));
+        const tg = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168));
+        const tb = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
+        
+        result.data[i] = r + (tr - r) * globalIntensity;
+        result.data[i + 1] = g + (tg - g) * globalIntensity;
+        result.data[i + 2] = b + (tb - b) * globalIntensity;
+      }
+      
+      return result;
+    }
+
+    // Vignette Effect
+    function vignetteProcessor(imageData, params, globalIntensity) {
+      const { width, height, data } = imageData;
+      const strength = params.strength * globalIntensity;
+      const result = new ImageData(new Uint8ClampedArray(data), width, height);
+      
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const maxDistance = Math.sqrt(centerX * centerX + centerY * centerY);
+      
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+          const vignette = 1 - (distance / maxDistance) * (1 - strength);
+          const factor = Math.max(strength, Math.min(1, vignette));
+          
+          const index = (y * width + x) * 4;
+          result.data[index] *= factor;
+          result.data[index + 1] *= factor;
+          result.data[index + 2] *= factor;
+        }
+      }
+      
+      return result;
+    }
+
+    // ========== Register Effects ==========
+    EffectRegistry.register('halftone', 'artistic', halftoneProcessor, { dotSize: 8 });
+    EffectRegistry.register('swirl', 'artistic', swirlProcessor, { intensity: 0.314 });
+    EffectRegistry.register('liquify', 'distortion', liquifyProcessor, { intensity: 20 });
+    EffectRegistry.register('sepia', 'color', sepiaProcessor, {});
+    EffectRegistry.register('vignette', 'filter', vignetteProcessor, { strength: 0.3 });
+
+    // ========== UI Event Handlers ==========
+    
+    // File upload
+    fileInput.addEventListener('change', handleFileSelect);
+    
+    // Drag and drop
+    document.querySelector('.file-upload-area').addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.target.style.borderColor = '#4ecdc4';
+    });
+    
+    document.querySelector('.file-upload-area').addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.target.style.borderColor = 'rgba(255,255,255,0.3)';
+    });
+    
+    document.querySelector('.file-upload-area').addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.target.style.borderColor = 'rgba(255,255,255,0.3)';
+      const files = e.dataTransfer.files;
+      if (files.length > 0 && files[0].type.startsWith('image/')) {
+        fileInput.files = files;
+        handleFileSelect();
+      }
+    });
+
+    // Category tabs
+    document.querySelectorAll('.tab-button').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const category = tab.dataset.category;
+        
+        // Update active tab
+        document.querySelectorAll('.tab-button').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Show/hide effects
+        document.querySelectorAll('.control-group[data-category]').forEach(group => {
+          if (group.dataset.category === category) {
+            group.style.display = 'block';
+          } else {
+            group.style.display = 'none';
+          }
+        });
+      });
+    });
+
+    // Parameter sliders
+    document.querySelectorAll('.control-slider').forEach(slider => {
+      slider.addEventListener('input', (e) => {
+        const value = e.target.value;
+        const valueDisplay = document.getElementById(e.target.id + '-value');
+        if (valueDisplay) {
+          valueDisplay.textContent = value;
+        }
+        
+        // Update effect parameters
+        const parts = e.target.id.split('-');
+        if (parts.length >= 2) {
+          const effectName = parts[0];
+          const paramName = parts[1];
+          EffectRegistry.updateParam(effectName, paramName, parseFloat(value));
+          
+          if (originalImageData) {
+            processImage();
+          }
+        }
+      });
+    });
+
+    // Control buttons
+    document.getElementById('clear-all-btn').addEventListener('click', clearAllEffects);
+    document.getElementById('reset-btn').addEventListener('click', resetImage);
+    document.getElementById('snapshot-btn').addEventListener('click', downloadSnapshot);
+    document.getElementById('randomize-btn').addEventListener('click', randomizeEffects);
+
+    // ========== Core Functions ==========
+    
+    function handleFileSelect() {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          imgWidth = img.width;
+          imgHeight = img.height;
+          canvas.width = imgWidth;
+          canvas.height = imgHeight;
+
+          ctx.drawImage(img, 0, 0);
+          originalImageData = ctx.getImageData(0, 0, imgWidth, imgHeight);
+          workingImageData = new ImageData(
+            new Uint8ClampedArray(originalImageData.data),
+            imgWidth,
+            imgHeight
+          );
+
+          canvas.style.display = 'block';
+          canvasPlaceholder.style.display = 'none';
+          
+          processImage();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function processImage() {
+      if (!originalImageData) return;
+      
+      workingImageData = EffectRegistry.processAll(originalImageData);
+      ctx.putImageData(workingImageData, 0, 0);
+    }
+
+    function toggleEffect(effectName) {
+      const toggle = document.getElementById(effectName + '-toggle');
+      const effect = EffectRegistry.effects[effectName];
+      
+      if (!effect) return;
+      
+      if (toggle.checked) {
+        EffectRegistry.enable(effectName);
+      } else {
+        EffectRegistry.disable(effectName);
+      }
+      
+      if (originalImageData) {
+        processImage();
+      }
+    }
+
+    function toggleControls(effectName) {
+      const controls = document.getElementById(effectName + '-controls');
+      const expandBtn = controls.parentElement.querySelector('.expand-btn');
+      
+      if (controls.classList.contains('collapsed')) {
+        controls.classList.remove('collapsed');
+        expandBtn.classList.add('expanded');
+      } else {
+        controls.classList.add('collapsed');
+        expandBtn.classList.remove('expanded');
+      }
+    }
+
+    function clearAllEffects() {
+      EffectRegistry.activeEffects.forEach(effectName => {
+        EffectRegistry.disable(effectName);
+        document.getElementById(effectName + '-toggle').checked = false;
+      });
+      
+      if (originalImageData) {
+        processImage();
+      }
+    }
+
+    function resetImage() {
+      if (!originalImageData) return;
+      
+      workingImageData = new ImageData(
+        new Uint8ClampedArray(originalImageData.data),
+        imgWidth,
+        imgHeight
+      );
+      ctx.putImageData(workingImageData, 0, 0);
+    }
+
+    function downloadSnapshot() {
+      if (!workingImageData) return;
+      
+      const dataURL = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = dataURL;
+      link.download = 'effects_studio_image.png';
+      link.click();
+      
+      // Visual feedback
+      const btn = document.getElementById('snapshot-btn');
+      btn.innerHTML = '📸 Saved!';
+      btn.style.background = 'linear-gradient(145deg, #66bb6a, #4caf50)';
+      setTimeout(() => {
+        btn.innerHTML = '📷 Save Image';
+        btn.style.background = '';
+      }, 1500);
+    }
+
+    function randomizeEffects() {
+      // Clear current effects
+      clearAllEffects();
+      
+      // Randomly enable 2-4 effects
+      const allEffects = Object.keys(EffectRegistry.effects);
+      const numEffects = Math.floor(Math.random() * 3) + 2; // 2-4 effects
+      
+      for (let i = 0; i < numEffects; i++) {
+        const randomEffect = allEffects[Math.floor(Math.random() * allEffects.length)];
+        document.getElementById(randomEffect + '-toggle').checked = true;
+        EffectRegistry.enable(randomEffect);
+        
+        // Randomize parameters
+        const sliders = document.querySelectorAll(`[id^="${randomEffect}-"]:not([id$="-toggle"]):not([id$="-controls"])`);
+        sliders.forEach(slider => {
+          if (slider.type === 'range') {
+            const min = parseFloat(slider.min);
+            const max = parseFloat(slider.max);
+            const randomValue = Math.random() * (max - min) + min;
+            slider.value = randomValue.toFixed(slider.step ? 1 : 0);
+            
+            const valueDisplay = document.getElementById(slider.id + '-value');
+            if (valueDisplay) {
+              valueDisplay.textContent = slider.value;
+            }
+            
+            // Update effect parameter
+            const parts = slider.id.split('-');
+            if (parts.length >= 2) {
+              const effectName = parts[0];
+              const paramName = parts[1];
+              EffectRegistry.updateParam(effectName, paramName, parseFloat(slider.value));
+            }
+          }
+        });
+      }
+      
+      if (originalImageData) {
+        processImage();
+      }
+      
+      // Visual feedback
+      const btn = document.getElementById('randomize-btn');
+      btn.innerHTML = '🎉 Randomized!';
+      btn.style.transform = 'scale(1.05)';
+      setTimeout(() => {
+        btn.innerHTML = '🎲 Randomize Effects';
+        btn.style.transform = '';
+      }, 1000);
+    }
+
+    // ========== Initialize ==========
+    
+    // Show artistic category by default
+    document.querySelectorAll('.control-group[data-category]').forEach(group => {
+      if (group.dataset.category !== 'artistic' && group.dataset.category !== 'global') {
+        group.style.display = 'none';
+      }
+    });
+
+    // Startup animation
+    document.addEventListener('DOMContentLoaded', () => {
+      const controlGroups = document.querySelectorAll('.control-group');
+      controlGroups.forEach((group, index) => {
+        group.style.opacity = '0';
+        group.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+          group.style.transition = 'all 0.5s ease';
+          group.style.opacity = '1';
+          group.style.transform = 'translateY(0)';
+        }, index * 100);
+      });
+    });
+  </script>
+            

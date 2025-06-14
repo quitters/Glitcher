@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Advanced Glitch Effects</title>
+  <style>
+    body { font-family: sans-serif; }
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    #controls > div {
+      display: flex;
+      flex-direction: column;
+    }
+    label {
+      font-weight: bold;
+      margin-bottom: 0.25rem;
+    }
+    .slider-value {
+      font-weight: bold;
+      margin-left: 0.5rem;
+    }
+    canvas {
+      display: block;
+      border: 1px solid #ccc;
+      margin-top: 1rem;
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Advanced Glitch Effects</h1>
+
+  <!-- Controls Container -->
+  <div id="controls">
+
+    <!-- Image Upload -->
+    <div>
+      <label for="image-input">Upload an Image:</label>
+      <input type="file" id="image-input" accept="image/*">
+    </div>
+
+    <!-- Direction -->
+    <div>
+      <label for="direction-select">Direction:</label>
+      <select id="direction-select">
+        <option value="off">Off</option>
+        <option value="down">Down</option>
+        <option value="up">Up</option>
+        <option value="right">Right</option>
+        <option value="left">Left</option>
+        <option value="random">Random</option>
+        <option value="jitter">Jitter</option>
+      </select>
+    </div>
+
+    <!-- Spiral -->
+    <div>
+      <label for="spiral-select">Spiral:</label>
+      <select id="spiral-select">
+        <!-- "cw" and "ccw" removed; replaced by a single "Spiral" option plus a toggle button -->
+        <option value="off">Off</option>
+        <option value="spiral">Spiral</option>
+        <option value="insideOut">Inside-Out</option>
+        <option value="outsideIn">Outside-In</option>
+        <option value="random">Random</option>
+      </select>
+      <button id="spiral-direction-btn">CW</button>
+    </div>
+
+    <!-- Slice -->
+    <div>
+      <label for="slice-select">Slice:</label>
+      <select id="slice-select">
+        <option value="off">Off</option>
+        <option value="horizontal">Horizontal</option>
+        <option value="vertical">Vertical</option>
+        <option value="both">Both</option>
+      </select>
+    </div>
+
+    <!-- Pixel Sort -->
+    <div>
+      <label for="pixel-sort-select">Pixel Sort:</label>
+      <select id="pixel-sort-select">
+        <option value="off">Off</option>
+        <option value="columnBrightness">Columns by Brightness</option>
+        <option value="rowBrightness">Rows by Brightness</option>
+        <option value="columnHue">Columns by Hue</option>
+        <option value="rowHue">Rows by Hue</option>
+        <option value="randomLines">Random Lines</option>
+      </select>
+    </div>
+
+    <!-- Intensity -->
+    <div>
+      <label for="intensity-select">Intensity:</label>
+      <select id="intensity-select">
+        <option value="medium">Medium</option>
+        <option value="large">Large</option>
+        <option value="extraLarge">Extra Large</option>
+      </select>
+    </div>
+
+    <!-- Shift Speed Slider -->
+    <div>
+      <label for="speed-range">Shift Speed:</label>
+      <input type="range" id="speed-range" min="1" max="5" step="1" value="1">
+      <span id="speed-value" class="slider-value">1</span>
+    </div>
+
+    <!-- Swirl Strength Slider -->
+    <div>
+      <label for="swirl-range">Swirl Strength:</label>
+      <input type="range" id="swirl-range" min="0.01" max="0.15" step="0.01" value="0.06">
+      <span id="swirl-value" class="slider-value">0.06</span>
+    </div>
+
+    <!-- Color Offset Range Slider (for slice glitch) -->
+    <div>
+      <label for="color-offset-range">Color Offset Range:</label>
+      <input type="range" id="color-offset-range" min="0" max="50" step="1" value="20">
+      <span id="color-offset-value" class="slider-value">20</span>
+    </div>
+
+    <!-- Clump Lifetime Sliders -->
+    <div>
+      <label for="min-lifetime">Min Clump Lifetime:</label>
+      <input type="range" id="min-lifetime" min="1" max="300" step="1" value="90">
+      <span id="min-lifetime-value" class="slider-value">90</span>
+
+      <label for="max-lifetime">Max Clump Lifetime:</label>
+      <input type="range" id="max-lifetime" min="1" max="300" step="1" value="150">
+      <span id="max-lifetime-value" class="slider-value">150</span>
+    </div>
+
+    <!-- Randomize Button -->
+    <div>
+      <button id="randomize-btn">Randomize</button>
+    </div>
+
+    <!-- Play/Pause & Reset -->
+    <div>
+      <button id="play-pause-btn">Pause</button>
+      <button id="reset-btn">Reset</button>
+    </div>
+
+    <!-- Recording to Video -->
+    <div>
+      <label for="record-range">Recording Duration (seconds):</label>
+      <input type="range" id="record-range" min="1" max="20" step="1" value="5">
+      <span id="record-value" class="slider-value">5</span>
+
+      <label for="reverse-checkbox">Reverse:</label>
+      <input type="checkbox" id="reverse-checkbox">
+
+      <button id="record-btn">Record</button>
+    </div>
+
+    <!-- Snapshot -->
+    <div>
+      <button id="snapshot-btn">Download Snapshot</button>
+    </div>
+
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <!-- (GIF library removed) -->
+  <!-- Main Script -->
+  <script src="script.js"></script>
+</body>
+</html>

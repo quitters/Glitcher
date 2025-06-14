@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mirror & Kaleidoscope Effects</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 5px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mirror & Kaleidoscope Effects</h1>
+    <div class="controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <div>
+            <label>Effect Type: 
+                <select id="effectType">
+                    <option value="mirrorHorizontal">Mirror Horizontal</option>
+                    <option value="mirrorVertical">Mirror Vertical</option>
+                    <option value="mirrorBoth">Mirror Both</option>
+                    <option value="kaleidoscope4">Kaleidoscope (4-way)</option>
+                    <option value="kaleidoscope8">Kaleidoscope (8-way)</option>
+                    <option value="tiling">Tiling Pattern</option>
+                </select>
+            </label>
+            <div id="additionalControls"></div>
+        </div>
+    </div>
+    
+    <script>
+        let img;
+        let originalImg;
+        let currentEffect = 'mirrorHorizontal';
+        let tilesX = 4;
+        let tilesY = 4;
+        
+        function setup() {
+            createCanvas(800, 600);
+            background(255);
+            textAlign(CENTER, CENTER);
+            fill(100);
+            text("Upload an image to apply mirror/kaleidoscope effects", width/2, height/2);
+            updateControls();
+        }
+        
+        function draw() {
+            if (img && originalImg) {
+                applyEffect();
+                noLoop();
+            }
+        }
+        
+        function applyEffect() {
+            switch(currentEffect) {
+                case 'mirrorHorizontal':
+                    applyMirrorHorizontal();
+                    break;
+                case 'mirrorVertical':
+                    applyMirrorVertical();
+                    break;
+                case 'mirrorBoth':
+                    applyMirrorBoth();
+                    break;
+                case 'kaleidoscope4':
+                    applyKaleidoscope(4);
+                    break;
+                case 'kaleidoscope8':
+                    applyKaleidoscope(8);
+                    break;
+                case 'tiling':
+                    applyTiling();
+                    break;
+            }
+        }
+        
+        function applyMirrorHorizontal() {
+            img = originalImg.get();
+            image(img, 0, 0);
+            
+            // Mirror the right half
+            img.loadPixels();
+            for (let x = 0; x < img.width / 2; x++) {
+                for (let y = 0; y < img.height; y++) {
+                    let leftIndex = (x + y * img.width) * 4;
+                    let rightIndex = ((img.width - x - 1) + y * img.width) * 4;
+                    
+                    img.pixels[rightIndex] = img.pixels[leftIndex];
+                    img.pixels[rightIndex + 1] = img.pixels[leftIndex + 1];
+                    img.pixels[rightIndex + 2] = img.pixels[leftIndex + 2];
+                    img.pixels[rightIndex + 3] = img.pixels[leftIndex + 3];
+                }
+            }
+            img.updatePixels();
+            image(img, 0, 0);
+        }
+        
+        function applyMirrorVertical() {
+            img = originalImg.get();
+            image(img, 0, 0);
+            
+            // Mirror the bottom half
+            img.loadPixels();
+            for (let x = 0; x < img.width; x++) {
+                for (let y = 0; y < img.height / 2; y++) {
+                    let topIndex = (x + y * img.width) * 4;
+                    let bottomIndex = (x + (img.height - y - 1) * img.width) * 4;
+                    
+                    img.pixels[bottomIndex] = img.pixels[topIndex];
+                    img.pixels[bottomIndex + 1] = img.pixels[topIndex + 1];
+                    img.pixels[bottomIndex + 2] = img.pixels[topIndex + 2];
+                    img.pixels[bottomIndex + 3] = img.pixels[topIndex + 3];
+                }
+            }
+            img.updatePixels();
+            image(img, 0, 0);
+        }
+        
+        function applyMirrorBoth() {
+            img = originalImg.get();
+            
+            // First mirror horizontally
+            img.loadPixels();
+            for (let x = 0; x < img.width / 2; x++) {
+                for (let y = 0; y < img.height; y++) {
+                    let leftIndex = (x + y * img.width) * 4;
+                    let rightIndex = ((img.width - x - 1) + y * img.width) * 4;
+                    
+                    img.pixels[rightIndex] = img.pixels[leftIndex];
+                    img.pixels[rightIndex + 1] = img.pixels[leftIndex + 1];
+                    img.pixels[rightIndex + 2] = img.pixels[leftIndex + 2];
+                    img.pixels[rightIndex + 3] = img.pixels[leftIndex + 3];
+                }
+            }
+            
+            // Then mirror vertically
+            for (let x = 0; x < img.width; x++) {
+                for (let y = 0; y < img.height / 2; y++) {
+                    let topIndex = (x + y * img.width) * 4;
+                    let bottomIndex = (x + (img.height - y - 1) * img.width) * 4;
+                    
+                    img.pixels[bottomIndex] = img.pixels[topIndex];
+                    img.pixels[bottomIndex + 1] = img.pixels[topIndex + 1];
+                    img.pixels[bottomIndex + 2] = img.pixels[topIndex + 2];
+                    img.pixels[bottomIndex + 3] = img.pixels[topIndex + 3];
+                }
+            }
+            img.updatePixels();
+            image(img, 0, 0);
+        }
+        
+        function applyKaleidoscope(segments) {
+            background(0);
+            let centerX = width / 2;
+            let centerY = height / 2;
+            let radius = min(width, height) / 2;
+            
+            for (let i = 0; i < segments; i++) {
+                let angle = TWO_PI / segments * i;
+                push();
+                translate(centerX, centerY);
+                rotate(angle);
+                if (i % 2 === 1) {
+                    scale(-1, 1); // Flip every other segment for kaleidoscope effect
+                }
+                image(originalImg, -originalImg.width/2, -originalImg.height/2);
+                pop();
+            }
+        }
+        
+        function applyTiling() {
+            background(255);
+            let tileWidth = originalImg.width / tilesX;
+            let tileHeight = originalImg.height / tilesY;
+
+            for (let y = 0; y < tilesY; y++) {
+                for (let x = 0; x < tilesX; x++) {
+                    image(originalImg, x * tileWidth, y * tileHeight, tileWidth, tileHeight);
+                }
+            }
+        }
+        
+        function updateControls() {
+            const controlsDiv = document.getElementById('additionalControls');
+            controlsDiv.innerHTML = '';
+            
+            if (currentEffect === 'tiling') {
+                controlsDiv.innerHTML = `
+                    <label>Tiles X: <input type="range" id="tilesXSlider" min="2" max="10" value="${tilesX}"></label>
+                    <span id="tilesXValue">${tilesX}</span><br>
+                    <label>Tiles Y: <input type="range" id="tilesYSlider" min="2" max="10" value="${tilesY}"></label>
+                    <span id="tilesYValue">${tilesY}</span>
+                `;
+                
+                document.getElementById('tilesXSlider').addEventListener('input', function(e) {
+                    tilesX = parseInt(e.target.value);
+                    document.getElementById('tilesXValue').textContent = tilesX;
+                    if (img) loop();
+                });
+                
+                document.getElementById('tilesYSlider').addEventListener('input', function(e) {
+                    tilesY = parseInt(e.target.value);
+                    document.getElementById('tilesYValue').textContent = tilesY;
+                    if (img) loop();
+                });
+            }
+        }
+        
+        // File input handler
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadImage(url, function(loadedImg) {
+                    originalImg = loadedImg;
+                    img = loadedImg;
+                    resizeCanvas(img.width, img.height);
+                    loop();
+                }, function(error) {
+                    console.error('Error loading image:', error);
+                });
+            }
+        });
+        
+        // Effect type control
+        document.getElementById('effectType').addEventListener('change', function(e) {
+            currentEffect = e.target.value;
+            updateControls();
+            if (img) {
+                loop();
+            }
+        });
+    </script>
+</body>
+</html>

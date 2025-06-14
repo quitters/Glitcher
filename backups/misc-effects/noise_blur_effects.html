@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noise, Blur & Filter Effects</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 5px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Noise, Blur & Filter Effects</h1>
+    <div class="controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <div>
+            <label>Effect Type: 
+                <select id="effectType">
+                    <option value="addNoise">Add Noise</option>
+                    <option value="blur">Gaussian Blur</option>
+                    <option value="gradientOverlay">Gradient Overlay</option>
+                    <option value="luminosityMask">Luminosity Mask</option>
+                </select>
+            </label>
+            <div id="additionalControls"></div>
+        </div>
+    </div>
+    
+    <script>
+        let img;
+        let originalImg;
+        let currentEffect = 'addNoise';
+        let noiseIntensity = 50;
+        let blurAmount = 3;
+        let gradientType = 'diagonal';
+        let gradientOpacity = 127;
+        let maskThreshold = 127;
+        
+        function setup() {
+            createCanvas(800, 600);
+            background(255);
+            textAlign(CENTER, CENTER);
+            fill(100);
+            text("Upload an image to apply noise, blur & filter effects", width/2, height/2);
+            updateControls();
+        }
+        
+        function draw() {
+            if (img && originalImg) {
+                applyEffect();
+                noLoop();
+            }
+        }
+        
+        function applyEffect() {
+            // Start with original image
+            img = originalImg.get();
+            
+            switch(currentEffect) {
+                case 'addNoise':
+                    applyAddNoise();
+                    break;
+                case 'blur':
+                    applyBlur();
+                    break;
+                case 'gradientOverlay':
+                    applyGradientOverlay();
+                    break;
+                case 'luminosityMask':
+                    applyLuminosityMask();
+                    break;
+            }
+            
+            image(img, 0, 0);
+        }
+        
+        function applyAddNoise() {
+            img.loadPixels();
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                let noiseFactor = random(-noiseIntensity, noiseIntensity);
+                img.pixels[i] = constrain(img.pixels[i] + noiseFactor, 0, 255);
+                img.pixels[i + 1] = constrain(img.pixels[i + 1] + noiseFactor, 0, 255);
+                img.pixels[i + 2] = constrain(img.pixels[i + 2] + noiseFactor, 0, 255);
+            }
+            img.updatePixels();
+        }
+        
+        function applyBlur() {
+            img.filter(BLUR, blurAmount);
+        }
+        
+        function applyGradientOverlay() {
+            image(img, 0, 0);
+            
+            // Create gradient overlay
+            let gradientImg = createGraphics(img.width, img.height);
+            gradientImg.loadPixels();
+            
+            for (let y = 0; y < img.height; y++) {
+                for (let x = 0; x < img.width; x++) {
+                    let index = (x + y * img.width) * 4;
+                    let inter;
+                    
+                    switch(gradientType) {
+                        case 'horizontal':
+                            inter = x / img.width;
+                            break;
+                        case 'vertical':
+                            inter = y / img.height;
+                            break;
+                        case 'diagonal':
+                            inter = (x + y) / (img.width + img.height);
+                            break;
+                        case 'radial':
+                            let centerX = img.width / 2;
+                            let centerY = img.height / 2;
+                            let maxDist = dist(0, 0, centerX, centerY);
+                            inter = dist(x, y, centerX, centerY) / maxDist;
+                            break;
+                    }
+                    
+                    let gradientColor = lerpColor(color(0, 0, 0), color(255, 255, 255), inter);
+                    gradientImg.pixels[index] = red(gradientColor);
+                    gradientImg.pixels[index + 1] = green(gradientColor);
+                    gradientImg.pixels[index + 2] = blue(gradientColor);
+                    gradientImg.pixels[index + 3] = gradientOpacity;
+                }
+            }
+            gradientImg.updatePixels();
+            
+            // Blend with original image
+            img.loadPixels();
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                let alpha = gradientOpacity / 255;
+                img.pixels[i] = img.pixels[i] * (1 - alpha) + gradientImg.pixels[i] * alpha;
+                img.pixels[i + 1] = img.pixels[i + 1] * (1 - alpha) + gradientImg.pixels[i + 1] * alpha;
+                img.pixels[i + 2] = img.pixels[i + 2] * (1 - alpha) + gradientImg.pixels[i + 2] * alpha;
+            }
+            img.updatePixels();
+        }
+        
+        function applyLuminosityMask() {
+            img.loadPixels();
+            
+            // Create mask based on luminosity
+            let maskImg = createImage(img.width, img.height);
+            maskImg.loadPixels();
+
+            for (let y = 0; y < img.height; y++) {
+                for (let x = 0; x < img.width; x++) {
+                    let index = (x + y * img.width) * 4;
+                    let brightness = (img.pixels[index] + img.pixels[index + 1] + img.pixels[index + 2]) / 3;
+                    let alpha = brightness > maskThreshold ? 255 : 0;
+                    
+                    maskImg.pixels[index] = img.pixels[index];
+                    maskImg.pixels[index + 1] = img.pixels[index + 1];
+                    maskImg.pixels[index + 2] = img.pixels[index + 2];
+                    maskImg.pixels[index + 3] = alpha;
+                }
+            }
+
+            maskImg.updatePixels();
+            img = maskImg;
+        }
+        
+        function updateControls() {
+            const controlsDiv = document.getElementById('additionalControls');
+            controlsDiv.innerHTML = '';
+            
+            switch(currentEffect) {
+                case 'addNoise':
+                    controlsDiv.innerHTML = `
+                        <label>Noise Intensity: <input type="range" id="noiseSlider" min="0" max="100" value="${noiseIntensity}"></label>
+                        <span id="noiseValue">${noiseIntensity}</span>
+                    `;
+                    document.getElementById('noiseSlider').addEventListener('input', function(e) {
+                        noiseIntensity = parseInt(e.target.value);
+                        document.getElementById('noiseValue').textContent = noiseIntensity;
+                        if (img) loop();
+                    });
+                    break;
+                    
+                case 'blur':
+                    controlsDiv.innerHTML = `
+                        <label>Blur Amount: <input type="range" id="blurSlider" min="1" max="20" value="${blurAmount}"></label>
+                        <span id="blurValue">${blurAmount}</span>
+                    `;
+                    document.getElementById('blurSlider').addEventListener('input', function(e) {
+                        blurAmount = parseInt(e.target.value);
+                        document.getElementById('blurValue').textContent = blurAmount;
+                        if (img) loop();
+                    });
+                    break;
+                    
+                case 'gradientOverlay':
+                    controlsDiv.innerHTML = `
+                        <label>Gradient Type: 
+                            <select id="gradientTypeSelect">
+                                <option value="diagonal">Diagonal</option>
+                                <option value="horizontal">Horizontal</option>
+                                <option value="vertical">Vertical</option>
+                                <option value="radial">Radial</option>
+                            </select>
+                        </label><br>
+                        <label>Opacity: <input type="range" id="opacitySlider" min="0" max="255" value="${gradientOpacity}"></label>
+                        <span id="opacityValue">${gradientOpacity}</span>
+                    `;
+                    
+                    document.getElementById('gradientTypeSelect').value = gradientType;
+                    document.getElementById('gradientTypeSelect').addEventListener('change', function(e) {
+                        gradientType = e.target.value;
+                        if (img) loop();
+                    });
+                    
+                    document.getElementById('opacitySlider').addEventListener('input', function(e) {
+                        gradientOpacity = parseInt(e.target.value);
+                        document.getElementById('opacityValue').textContent = gradientOpacity;
+                        if (img) loop();
+                    });
+                    break;
+                    
+                case 'luminosityMask':
+                    controlsDiv.innerHTML = `
+                        <label>Threshold: <input type="range" id="maskThresholdSlider" min="0" max="255" value="${maskThreshold}"></label>
+                        <span id="maskThresholdValue">${maskThreshold}</span>
+                    `;
+                    document.getElementById('maskThresholdSlider').addEventListener('input', function(e) {
+                        maskThreshold = parseInt(e.target.value);
+                        document.getElementById('maskThresholdValue').textContent = maskThreshold;
+                        if (img) loop();
+                    });
+                    break;
+            }
+        }
+        
+        // File input handler
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadImage(url, function(loadedImg) {
+                    originalImg = loadedImg;
+                    img = loadedImg;
+                    resizeCanvas(img.width, img.height);
+                    loop();
+                }, function(error) {
+                    console.error('Error loading image:', error);
+                });
+            }
+        });
+        
+        // Effect type control
+        document.getElementById('effectType').addEventListener('change', function(e) {
+            currentEffect = e.target.value;
+            updateControls();
+            if (img) {
+                loop();
+            }
+        });
+    </script>
+</body>
+</html>

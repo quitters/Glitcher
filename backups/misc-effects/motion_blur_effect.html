@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motion Blur Effect</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 5px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Motion Blur Effect</h1>
+    <div class="controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <div>
+            <label>Direction: 
+                <select id="blurDirection">
+                    <option value="horizontal">Horizontal</option>
+                    <option value="vertical">Vertical</option>
+                    <option value="diagonal">Diagonal</option>
+                    <option value="radial">Radial</option>
+                </select>
+            </label>
+            <label>Blur Size: <input type="range" id="blurSize" min="2" max="30" value="10"></label>
+            <span id="blurValue">10</span>
+        </div>
+    </div>
+    
+    <script>
+        let img;
+        let blurSize = 10;
+        let blurDirection = 'horizontal';
+        
+        function setup() {
+            createCanvas(800, 600);
+            background(255);
+            textAlign(CENTER, CENTER);
+            fill(100);
+            text("Upload an image to apply motion blur effect", width/2, height/2);
+        }
+        
+        function draw() {
+            if (img) {
+                applyMotionBlur();
+                noLoop();
+            }
+        }
+        
+        function applyMotionBlur() {
+            img.loadPixels();
+            let blurredImage = createImage(img.width, img.height);
+            blurredImage.loadPixels();
+
+            for (let y = 0; y < img.height; y++) {
+                for (let x = 0; x < img.width; x++) {
+                    let index = (x + y * img.width) * 4;
+                    let sumR = 0, sumG = 0, sumB = 0, sumA = 0, count = 0;
+
+                    // Apply blur based on direction
+                    switch(blurDirection) {
+                        case 'horizontal':
+                            for (let i = -blurSize; i <= blurSize; i++) {
+                                let newX = constrain(x + i, 0, img.width - 1);
+                                let newIndex = (newX + y * img.width) * 4;
+                                sumR += img.pixels[newIndex];
+                                sumG += img.pixels[newIndex + 1];
+                                sumB += img.pixels[newIndex + 2];
+                                sumA += img.pixels[newIndex + 3];
+                                count++;
+                            }
+                            break;
+                            
+                        case 'vertical':
+                            for (let i = -blurSize; i <= blurSize; i++) {
+                                let newY = constrain(y + i, 0, img.height - 1);
+                                let newIndex = (x + newY * img.width) * 4;
+                                sumR += img.pixels[newIndex];
+                                sumG += img.pixels[newIndex + 1];
+                                sumB += img.pixels[newIndex + 2];
+                                sumA += img.pixels[newIndex + 3];
+                                count++;
+                            }
+                            break;
+                            
+                        case 'diagonal':
+                            for (let i = -blurSize; i <= blurSize; i++) {
+                                let newX = constrain(x + i, 0, img.width - 1);
+                                let newY = constrain(y + i, 0, img.height - 1);
+                                let newIndex = (newX + newY * img.width) * 4;
+                                sumR += img.pixels[newIndex];
+                                sumG += img.pixels[newIndex + 1];
+                                sumB += img.pixels[newIndex + 2];
+                                sumA += img.pixels[newIndex + 3];
+                                count++;
+                            }
+                            break;
+                            
+                        case 'radial':
+                            let centerX = img.width / 2;
+                            let centerY = img.height / 2;
+                            let angle = atan2(y - centerY, x - centerX);
+                            
+                            for (let i = -blurSize; i <= blurSize; i++) {
+                                let distance = i * 2;
+                                let newX = constrain(x + cos(angle) * distance, 0, img.width - 1);
+                                let newY = constrain(y + sin(angle) * distance, 0, img.height - 1);
+                                let newIndex = (floor(newX) + floor(newY) * img.width) * 4;
+                                sumR += img.pixels[newIndex];
+                                sumG += img.pixels[newIndex + 1];
+                                sumB += img.pixels[newIndex + 2];
+                                sumA += img.pixels[newIndex + 3];
+                                count++;
+                            }
+                            break;
+                    }
+
+                    blurredImage.pixels[index] = sumR / count;
+                    blurredImage.pixels[index + 1] = sumG / count;
+                    blurredImage.pixels[index + 2] = sumB / count;
+                    blurredImage.pixels[index + 3] = sumA / count;
+                }
+            }
+
+            blurredImage.updatePixels();
+            image(blurredImage, 0, 0);
+        }
+        
+        // File input handler
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadImage(url, function(loadedImg) {
+                    img = loadedImg;
+                    resizeCanvas(img.width, img.height);
+                    loop();
+                }, function(error) {
+                    console.error('Error loading image:', error);
+                });
+            }
+        });
+        
+        // Blur size control
+        document.getElementById('blurSize').addEventListener('input', function(e) {
+            blurSize = parseInt(e.target.value);
+            document.getElementById('blurValue').textContent = blurSize;
+            if (img) {
+                loop();
+            }
+        });
+        
+        // Blur direction control
+        document.getElementById('blurDirection').addEventListener('change', function(e) {
+            blurDirection = e.target.value;
+            if (img) {
+                loop();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Effects Collection</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+        select, input[type="range"] {
+            padding: 5px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Color Effects Collection</h1>
+    <div class="controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <div>
+            <label>Effect: 
+                <select id="effectType">
+                    <option value="sepia">Sepia Tone</option>
+                    <option value="invert">Invert Colors</option>
+                    <option value="colorChannelSwap">Color Channel Swap</option>
+                    <option value="hueShift">Hue Shift</option>
+                    <option value="brightness">Adjust Brightness</option>
+                    <option value="threshold">Threshold (B&W)</option>
+                    <option value="posterize">Posterize</option>
+                </select>
+            </label>
+            <div id="additionalControls"></div>
+        </div>
+    </div>
+    
+    <script>
+        let img;
+        let originalImg;
+        let currentEffect = 'sepia';
+        let effectParams = {
+            hueShift: 45,
+            brightness: 1.5,
+            threshold: 127,
+            posterizeLevels: 5
+        };
+        
+        function setup() {
+            createCanvas(800, 600);
+            background(255);
+            textAlign(CENTER, CENTER);
+            fill(100);
+            text("Upload an image to apply color effects", width/2, height/2);
+            updateControls();
+        }
+        
+        function draw() {
+            if (img && originalImg) {
+                applyEffect();
+                noLoop();
+            }
+        }
+        
+        function applyEffect() {
+            // Start with original image
+            img = originalImg.get();
+            
+            switch(currentEffect) {
+                case 'sepia':
+                    applySepia();
+                    break;
+                case 'invert':
+                    applyInvert();
+                    break;
+                case 'colorChannelSwap':
+                    applyColorChannelSwap();
+                    break;
+                case 'hueShift':
+                    applyHueShift();
+                    break;
+                case 'brightness':
+                    applyBrightness();
+                    break;
+                case 'threshold':
+                    applyThreshold();
+                    break;
+                case 'posterize':
+                    applyPosterize();
+                    break;
+            }
+            
+            image(img, 0, 0);
+        }
+        
+        function applySepia() {
+            img.loadPixels();
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                let r = img.pixels[i];
+                let g = img.pixels[i + 1];
+                let b = img.pixels[i + 2];
+
+                img.pixels[i] = r * 0.393 + g * 0.769 + b * 0.189;
+                img.pixels[i + 1] = r * 0.349 + g * 0.686 + b * 0.168;
+                img.pixels[i + 2] = r * 0.272 + g * 0.534 + b * 0.131;
+            }
+            img.updatePixels();
+        }
+        
+        function applyInvert() {
+            img.loadPixels();
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                img.pixels[i] = 255 - img.pixels[i];
+                img.pixels[i + 1] = 255 - img.pixels[i + 1];
+                img.pixels[i + 2] = 255 - img.pixels[i + 2];
+            }
+            img.updatePixels();
+        }
+        
+        function applyColorChannelSwap() {
+            img.loadPixels();
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                let r = img.pixels[i];
+                let g = img.pixels[i + 1];
+                let b = img.pixels[i + 2];
+                
+                img.pixels[i] = b;     // Blue to red
+                img.pixels[i + 1] = r; // Red to green
+                img.pixels[i + 2] = g; // Green to blue
+            }
+            img.updatePixels();
+        }
+        
+        function applyHueShift() {
+            img.loadPixels();
+            colorMode(HSB);
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                let c = color(img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]);
+                let h = (hue(c) + effectParams.hueShift) % 360;
+                let s = saturation(c);
+                let br = brightness(c);
+                let newColor = color(h, s, br);
+
+                img.pixels[i] = red(newColor);
+                img.pixels[i + 1] = green(newColor);
+                img.pixels[i + 2] = blue(newColor);
+            }
+            colorMode(RGB);
+            img.updatePixels();
+        }
+        
+        function applyBrightness() {
+            img.loadPixels();
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                img.pixels[i] = constrain(img.pixels[i] * effectParams.brightness, 0, 255);
+                img.pixels[i + 1] = constrain(img.pixels[i + 1] * effectParams.brightness, 0, 255);
+                img.pixels[i + 2] = constrain(img.pixels[i + 2] * effectParams.brightness, 0, 255);
+            }
+            img.updatePixels();
+        }
+        
+        function applyThreshold() {
+            img.loadPixels();
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                let brightness = (img.pixels[i] + img.pixels[i + 1] + img.pixels[i + 2]) / 3;
+                let colorValue = brightness > effectParams.threshold ? 255 : 0;
+                img.pixels[i] = colorValue;
+                img.pixels[i + 1] = colorValue;
+                img.pixels[i + 2] = colorValue;
+            }
+            img.updatePixels();
+        }
+        
+        function applyPosterize() {
+            img.loadPixels();
+            let levels = effectParams.posterizeLevels;
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                img.pixels[i] = floor(img.pixels[i] / 255 * (levels - 1)) * (255 / (levels - 1));
+                img.pixels[i + 1] = floor(img.pixels[i + 1] / 255 * (levels - 1)) * (255 / (levels - 1));
+                img.pixels[i + 2] = floor(img.pixels[i + 2] / 255 * (levels - 1)) * (255 / (levels - 1));
+            }
+            img.updatePixels();
+        }
+        
+        function updateControls() {
+            const controlsDiv = document.getElementById('additionalControls');
+            controlsDiv.innerHTML = '';
+            
+            switch(currentEffect) {
+                case 'hueShift':
+                    controlsDiv.innerHTML = `
+                        <label>Hue Shift: <input type="range" id="hueShiftSlider" min="0" max="360" value="${effectParams.hueShift}"></label>
+                        <span id="hueShiftValue">${effectParams.hueShift}</span>
+                    `;
+                    document.getElementById('hueShiftSlider').addEventListener('input', function(e) {
+                        effectParams.hueShift = parseInt(e.target.value);
+                        document.getElementById('hueShiftValue').textContent = effectParams.hueShift;
+                        if (img) loop();
+                    });
+                    break;
+                case 'brightness':
+                    controlsDiv.innerHTML = `
+                        <label>Brightness: <input type="range" id="brightnessSlider" min="0.1" max="3.0" step="0.1" value="${effectParams.brightness}"></label>
+                        <span id="brightnessValue">${effectParams.brightness}</span>
+                    `;
+                    document.getElementById('brightnessSlider').addEventListener('input', function(e) {
+                        effectParams.brightness = parseFloat(e.target.value);
+                        document.getElementById('brightnessValue').textContent = effectParams.brightness;
+                        if (img) loop();
+                    });
+                    break;
+                case 'threshold':
+                    controlsDiv.innerHTML = `
+                        <label>Threshold: <input type="range" id="thresholdSlider" min="0" max="255" value="${effectParams.threshold}"></label>
+                        <span id="thresholdValue">${effectParams.threshold}</span>
+                    `;
+                    document.getElementById('thresholdSlider').addEventListener('input', function(e) {
+                        effectParams.threshold = parseInt(e.target.value);
+                        document.getElementById('thresholdValue').textContent = effectParams.threshold;
+                        if (img) loop();
+                    });
+                    break;
+                case 'posterize':
+                    controlsDiv.innerHTML = `
+                        <label>Levels: <input type="range" id="posterizeSlider" min="2" max="10" value="${effectParams.posterizeLevels}"></label>
+                        <span id="posterizeValue">${effectParams.posterizeLevels}</span>
+                    `;
+                    document.getElementById('posterizeSlider').addEventListener('input', function(e) {
+                        effectParams.posterizeLevels = parseInt(e.target.value);
+                        document.getElementById('posterizeValue').textContent = effectParams.posterizeLevels;
+                        if (img) loop();
+                    });
+                    break;
+            }
+        }
+        
+        // File input handler
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadImage(url, function(loadedImg) {
+                    originalImg = loadedImg;
+                    img = loadedImg;
+                    resizeCanvas(img.width, img.height);
+                    loop();
+                }, function(error) {
+                    console.error('Error loading image:', error);
+                });
+            }
+        });
+        
+        // Effect type control
+        document.getElementById('effectType').addEventListener('change', function(e) {
+            currentEffect = e.target.value;
+            updateControls();
+            if (img) {
+                loop();
+            }
+        });
+    </script>
+</body>
+</html>

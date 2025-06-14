@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emboss Effect</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Emboss Effect</h1>
+    <div class="controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <div>
+            <label>Emboss Strength: <input type="range" id="embossStrength" min="0.5" max="3.0" step="0.1" value="1.0"></label>
+            <span id="strengthValue">1.0</span>
+        </div>
+    </div>
+    
+    <script>
+        let img;
+        let embossStrength = 1.0;
+        
+        function setup() {
+            createCanvas(800, 600);
+            background(255);
+            textAlign(CENTER, CENTER);
+            fill(100);
+            text("Upload an image to apply emboss effect", width/2, height/2);
+        }
+        
+        function draw() {
+            if (img) {
+                applyEmbossEffect();
+                noLoop();
+            }
+        }
+        
+        function applyEmbossEffect() {
+            img.loadPixels();
+            let embossImage = createImage(img.width, img.height);
+            embossImage.loadPixels();
+
+            for (let y = 1; y < img.height - 1; y++) {
+                for (let x = 1; x < img.width - 1; x++) {
+                    let index = (x + y * img.width) * 4;
+                    let nextIndex = ((x + 1) + (y + 1) * img.width) * 4;
+                    
+                    // Calculate difference between current pixel and bottom-right neighbor
+                    let r = (img.pixels[index] - img.pixels[nextIndex]) * embossStrength;
+                    let g = (img.pixels[index + 1] - img.pixels[nextIndex + 1]) * embossStrength;
+                    let b = (img.pixels[index + 2] - img.pixels[nextIndex + 2]) * embossStrength;
+                    
+                    // Convert to grayscale and add offset
+                    let gray = (r + g + b) / 3 + 128;
+                    gray = constrain(gray, 0, 255);
+                    
+                    embossImage.pixels[index] = gray;
+                    embossImage.pixels[index + 1] = gray;
+                    embossImage.pixels[index + 2] = gray;
+                    embossImage.pixels[index + 3] = img.pixels[index + 3];
+                }
+            }
+
+            embossImage.updatePixels();
+            image(embossImage, 0, 0);
+        }
+        
+        // File input handler
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadImage(url, function(loadedImg) {
+                    img = loadedImg;
+                    resizeCanvas(img.width, img.height);
+                    loop();
+                }, function(error) {
+                    console.error('Error loading image:', error);
+                });
+            }
+        });
+        
+        // Emboss strength control
+        document.getElementById('embossStrength').addEventListener('input', function(e) {
+            embossStrength = parseFloat(e.target.value);
+            document.getElementById('strengthValue').textContent = embossStrength;
+            if (img) {
+                loop();
+            }
+        });
+    </script>
+</body>
+</html>

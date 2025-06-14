@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liquify Warp Effect</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Liquify Warp Effect</h1>
+    <div class="controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <div>
+            <label>Warp Intensity: <input type="range" id="warpIntensity" min="5" max="50" value="20"></label>
+            <span id="warpValue">20</span>
+        </div>
+    </div>
+    
+    <script>
+        let img;
+        let warpIntensity = 20;
+        
+        function setup() {
+            createCanvas(800, 600);
+            background(255);
+            textAlign(CENTER, CENTER);
+            fill(100);
+            text("Upload an image to apply liquify warp effect", width/2, height/2);
+        }
+        
+        function draw() {
+            if (img) {
+                applyLiquifyWarp();
+                noLoop();
+            }
+        }
+        
+        function applyLiquifyWarp() {
+            img.loadPixels();
+            
+            let warpedImg = createImage(img.width, img.height);
+            warpedImg.loadPixels();
+
+            for (let x = 0; x < img.width; x++) {
+                for (let y = 0; y < img.height; y++) {
+                    let angle = noise(x * 0.01, y * 0.01) * TWO_PI;
+                    let newX = x + warpIntensity * cos(angle);
+                    let newY = y + warpIntensity * sin(angle);
+
+                    newX = constrain(newX, 0, img.width - 1);
+                    newY = constrain(newY, 0, img.height - 1);
+
+                    let srcIndex = (floor(newX) + floor(newY) * img.width) * 4;
+                    let dstIndex = (x + y * img.width) * 4;
+
+                    warpedImg.pixels[dstIndex] = img.pixels[srcIndex];
+                    warpedImg.pixels[dstIndex + 1] = img.pixels[srcIndex + 1];
+                    warpedImg.pixels[dstIndex + 2] = img.pixels[srcIndex + 2];
+                    warpedImg.pixels[dstIndex + 3] = img.pixels[srcIndex + 3];
+                }
+            }
+
+            warpedImg.updatePixels();
+            image(warpedImg, 0, 0);
+        }
+        
+        // File input handler
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadImage(url, function(loadedImg) {
+                    img = loadedImg;
+                    resizeCanvas(img.width, img.height);
+                    loop();
+                }, function(error) {
+                    console.error('Error loading image:', error);
+                });
+            }
+        });
+        
+        // Warp intensity control
+        document.getElementById('warpIntensity').addEventListener('input', function(e) {
+            warpIntensity = parseInt(e.target.value);
+            document.getElementById('warpValue').textContent = warpIntensity;
+            if (img) {
+                loop();
+            }
+        });
+    </script>
+</body>
+</html>

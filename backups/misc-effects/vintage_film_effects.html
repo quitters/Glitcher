@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vintage Film Effects</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 5px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Vintage Film Effects</h1>
+    <div class="controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <div>
+            <label>Film Type: 
+                <select id="filmType">
+                    <option value="polaroid">Polaroid</option>
+                    <option value="kodachrome">Kodachrome</option>
+                    <option value="filmGrain">Film Grain</option>
+                    <option value="lightLeaks">Light Leaks</option>
+                    <option value="faded">Faded Photo</option>
+                </select>
+            </label>
+        </div>
+        <div>
+            <label>Intensity: <input type="range" id="intensity" min="0.3" max="1.5" step="0.1" value="1.0"></label>
+            <span id="intensityValue">1.0</span>
+        </div>
+        <div>
+            <label>Grain Amount: <input type="range" id="grainAmount" min="0" max="100" value="30"></label>
+            <span id="grainValue">30</span>
+        </div>
+    </div>
+    
+    <script>
+        let img;
+        let originalImg;
+        let filmType = 'polaroid';
+        let intensity = 1.0;
+        let grainAmount = 30;
+        
+        function setup() {
+            createCanvas(800, 600);
+            background(255);
+            textAlign(CENTER, CENTER);
+            fill(100);
+            text("Upload an image to apply vintage film effects", width/2, height/2);
+        }
+        
+        function draw() {
+            if (img && originalImg) {
+                applyVintageEffect();
+                noLoop();
+            }
+        }
+        
+        function applyVintageEffect() {
+            img = originalImg.get();
+            
+            switch(filmType) {
+                case 'polaroid':
+                    applyPolaroidEffect();
+                    break;
+                case 'kodachrome':
+                    applyKodachromeEffect();
+                    break;
+                case 'filmGrain':
+                    applyFilmGrainEffect();
+                    break;
+                case 'lightLeaks':
+                    applyLightLeaksEffect();
+                    break;
+                case 'faded':
+                    applyFadedPhotoEffect();
+                    break;
+            }
+            
+            // Add film grain to all effects
+            if (grainAmount > 0) {
+                addFilmGrain();
+            }
+            
+            image(img, 0, 0);
+        }
+        
+        function applyPolaroidEffect() {
+            img.loadPixels();
+            
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                let r = img.pixels[i] / 255.0;
+                let g = img.pixels[i + 1] / 255.0;
+                let b = img.pixels[i + 2] / 255.0;
+                
+                // Warm color cast
+                r = r * 1.1 + 0.05;
+                g = g * 1.05 + 0.02;
+                b = b * 0.95;
+                
+                // Soft contrast curve
+                r = appleSoftCurve(r);
+                g = appleSoftCurve(g);
+                b = appleSoftCurve(b);
+                
+                // Apply intensity
+                let origR = img.pixels[i] / 255.0;
+                let origG = img.pixels[i + 1] / 255.0;
+                let origB = img.pixels[i + 2] / 255.0;
+                
+                r = origR + (r - origR) * intensity;
+                g = origG + (g - origG) * intensity;
+                b = origB + (b - origB) * intensity;
+                
+                img.pixels[i] = constrain(r * 255, 0, 255);
+                img.pixels[i + 1] = constrain(g * 255, 0, 255);
+                img.pixels[i + 2] = constrain(b * 255, 0, 255);
+            }
+            
+            img.updatePixels();
+            
+            // Add white border for Polaroid look
+            addPolaroidBorder();
+        }
+        
+        function applyKodachromeEffect() {
+            img.loadPixels();
+            
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                let r = img.pixels[i] / 255.0;
+                let g = img.pixels[i + 1] / 255.0;
+                let b = img.pixels[i + 2] / 255.0;
+                
+                // Kodachrome color characteristics
+                r = r * 1.15 + 0.03; // Enhanced reds
+                g = g * 0.98;        // Slightly reduced greens
+                b = b * 1.08 + 0.02; // Enhanced blues
+                
+                // High contrast S-curve
+                r = applyHighContrastCurve(r);
+                g = applyHighContrastCurve(g);
+                b = applyHighContrastCurve(b);
+                
+                // Apply intensity
+                let origR = img.pixels[i] / 255.0;
+                let origG = img.pixels[i + 1] / 255.0;
+                let origB = img.pixels[i + 2] / 255.0;
+                
+                r = origR + (r - origR) * intensity;
+                g = origG + (g - origG) * intensity;
+                b = origB + (b - origB) * intensity;
+                
+                img.pixels[i] = constrain(r * 255, 0, 255);
+                img.pixels[i + 1] = constrain(g * 255, 0, 255);
+                img.pixels[i + 2] = constrain(b * 255, 0, 255);
+            }
+            
+            img.updatePixels();
+        }
+        
+        function applyFilmGrainEffect() {
+            // Just add grain - this will be handled by addFilmGrain()
+        }
+        
+        function applyLightLeaksEffect() {
+            img.loadPixels();
+            
+            // Create light leak overlay
+            for (let y = 0; y < img.height; y++) {
+                for (let x = 0; x < img.width; x++) {
+                    let index = (x + y * img.width) * 4;
+                    
+                    // Create light leak pattern
+                    let leakIntensity = 0;
+                    
+                    // Corner leak
+                    let cornerDist = dist(x, y, img.width * 0.8, img.height * 0.2);
+                    if (cornerDist < img.width * 0.3) {
+                        leakIntensity = map(cornerDist, 0, img.width * 0.3, 0.4, 0) * intensity;
+                    }
+                    
+                    // Edge leak
+                    let edgeDist = Math.min(x, img.width - x);
+                    if (edgeDist < 50) {
+                        leakIntensity += map(edgeDist, 0, 50, 0.2, 0) * intensity;
+                    }
+                    
+                    // Apply orange/yellow leak
+                    img.pixels[index] = Math.min(255, img.pixels[index] + leakIntensity * 255 * 0.8);
+                    img.pixels[index + 1] = Math.min(255, img.pixels[index + 1] + leakIntensity * 255 * 0.5);
+                    img.pixels[index + 2] = Math.min(255, img.pixels[index + 2] + leakIntensity * 255 * 0.1);
+                }
+            }
+            
+            img.updatePixels();
+        }
+        
+        function applyFadedPhotoEffect() {
+            img.loadPixels();
+            
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                let r = img.pixels[i] / 255.0;
+                let g = img.pixels[i + 1] / 255.0;
+                let b = img.pixels[i + 2] / 255.0;
+                
+                // Fade effect - lift shadows, reduce contrast
+                r = r * 0.7 + 0.2;
+                g = g * 0.7 + 0.15;
+                b = b * 0.7 + 0.1;
+                
+                // Slight yellow cast
+                r = r * 1.05;
+                g = g * 1.02;
+                b = b * 0.95;
+                
+                // Apply intensity
+                let origR = img.pixels[i] / 255.0;
+                let origG = img.pixels[i + 1] / 255.0;
+                let origB = img.pixels[i + 2] / 255.0;
+                
+                r = origR + (r - origR) * intensity;
+                g = origG + (g - origG) * intensity;
+                b = origB + (b - origB) * intensity;
+                
+                img.pixels[i] = constrain(r * 255, 0, 255);
+                img.pixels[i + 1] = constrain(g * 255, 0, 255);
+                img.pixels[i + 2] = constrain(b * 255, 0, 255);
+            }
+            
+            img.updatePixels();
+        }
+        
+        function addFilmGrain() {
+            img.loadPixels();
+            
+            for (let i = 0; i < img.pixels.length; i += 4) {
+                let grain = (random() - 0.5) * grainAmount;
+                img.pixels[i] = constrain(img.pixels[i] + grain, 0, 255);
+                img.pixels[i + 1] = constrain(img.pixels[i + 1] + grain, 0, 255);
+                img.pixels[i + 2] = constrain(img.pixels[i + 2] + grain, 0, 255);
+            }
+            
+            img.updatePixels();
+        }
+        
+        function addPolaroidBorder() {
+            // Add white border
+            let borderSize = 20;
+            let bottomBorder = 60; // Larger bottom border like real Polaroids
+            
+            // Top, left, right borders
+            fill(255);
+            noStroke();
+            rect(0, 0, img.width, borderSize); // Top
+            rect(0, 0, borderSize, img.height); // Left
+            rect(img.width - borderSize, 0, borderSize, img.height); // Right
+            rect(0, img.height - bottomBorder, img.width, bottomBorder); // Bottom
+        }
+        
+        function appleSoftCurve(x) {
+            return 0.5 + 0.4 * Math.sin((x - 0.5) * Math.PI);
+        }
+        
+        function applyHighContrastCurve(x) {
+            return Math.pow(x, 0.8) * (1.0 + 0.2 * Math.sin(x * Math.PI));
+        }
+        
+        // File input handler
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadImage(url, function(loadedImg) {
+                    originalImg = loadedImg;
+                    img = loadedImg;
+                    resizeCanvas(img.width, img.height);
+                    loop();
+                }, function(error) {
+                    console.error('Error loading image:', error);
+                });
+            }
+        });
+        
+        // Film type control
+        document.getElementById('filmType').addEventListener('change', function(e) {
+            filmType = e.target.value;
+            if (img) {
+                loop();
+            }
+        });
+        
+        // Intensity control
+        document.getElementById('intensity').addEventListener('input', function(e) {
+            intensity = parseFloat(e.target.value);
+            document.getElementById('intensityValue').textContent = intensity;
+            if (img) {
+                loop();
+            }
+        });
+        
+        // Grain amount control
+        document.getElementById('grainAmount').addEventListener('input', function(e) {
+            grainAmount = parseInt(e.target.value);
+            document.getElementById('grainValue').textContent = grainAmount;
+            if (img) {
+                loop();
+            }
+        });
+    </script>
+</body>
+</html>

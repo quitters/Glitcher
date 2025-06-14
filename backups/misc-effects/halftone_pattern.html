@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Halftone Pattern Effect</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Halftone Pattern Effect</h1>
+    <div class="controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <div>
+            <label>Dot Size: <input type="range" id="dotSize" min="2" max="20" value="8"></label>
+            <span id="dotSizeValue">8</span>
+        </div>
+    </div>
+    
+    <script>
+        let img;
+        let dotSize = 8;
+        
+        function setup() {
+            createCanvas(800, 600);
+            background(255);
+            textAlign(CENTER, CENTER);
+            fill(100);
+            text("Upload an image to apply halftone effect", width/2, height/2);
+        }
+        
+        function draw() {
+            if (img) {
+                applyHalftoneEffect();
+                noLoop();
+            }
+        }
+        
+        function applyHalftoneEffect() {
+            background(255);
+            
+            for (let y = 0; y < img.height; y += dotSize) {
+                for (let x = 0; x < img.width; x += dotSize) {
+                    if (x < img.width && y < img.height) {
+                        let c = img.get(x, y);
+                        let brightness = (red(c) + green(c) + blue(c)) / 3;
+                        fill(128);
+                        noStroke();
+                        let size = map(brightness, 0, 255, dotSize, 0);
+                        ellipse(x + dotSize/2, y + dotSize/2, size, size);
+                    }
+                }
+            }
+        }
+        
+        // File input handler
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadImage(url, function(loadedImg) {
+                    img = loadedImg;
+                    resizeCanvas(img.width, img.height);
+                    loop();
+                }, function(error) {
+                    console.error('Error loading image:', error);
+                });
+            }
+        });
+        
+        // Dot size control
+        document.getElementById('dotSize').addEventListener('input', function(e) {
+            dotSize = parseInt(e.target.value);
+            document.getElementById('dotSizeValue').textContent = dotSize;
+            if (img) {
+                loop();
+            }
+        });
+    </script>
+</body>
+</html>

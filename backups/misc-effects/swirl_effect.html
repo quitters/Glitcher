@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swirl Effect</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Swirl Effect</h1>
+    <div class="controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <div>
+            <label>Swirl Intensity: <input type="range" id="swirlIntensity" min="0.1" max="2.0" step="0.1" value="0.314"></label>
+            <span id="swirlValue">0.314</span>
+        </div>
+    </div>
+    
+    <script>
+        let img;
+        let swirlIntensity = 0.314;
+        
+        function setup() {
+            createCanvas(800, 600);
+            background(255);
+            textAlign(CENTER, CENTER);
+            fill(100);
+            text("Upload an image to apply swirl effect", width/2, height/2);
+        }
+        
+        function draw() {
+            if (img) {
+                applySwirlEffect();
+                noLoop();
+            }
+        }
+        
+        function applySwirlEffect() {
+            let swirlImage = createImage(img.width, img.height);
+            swirlImage.loadPixels();
+            img.loadPixels();
+
+            let centerX = img.width / 2;
+            let centerY = img.height / 2;
+            let maxRadius = dist(0, 0, centerX, centerY);
+
+            for (let y = 0; y < img.height; y++) {
+                for (let x = 0; x < img.width; x++) {
+                    let angle = atan2(y - centerY, x - centerX);
+                    let radius = dist(centerX, centerY, x, y);
+                    let swirlAngle = map(radius, 0, maxRadius, 0, PI / swirlIntensity);
+                    let newAngle = angle + swirlAngle;
+                    let newX = centerX + cos(newAngle) * radius;
+                    let newY = centerY + sin(newAngle) * radius;
+                    
+                    let index = (x + y * img.width) * 4;
+                    
+                    if (newX >= 0 && newX < img.width && newY >= 0 && newY < img.height) {
+                        let newIndex = (floor(newX) + floor(newY) * img.width) * 4;
+                        swirlImage.pixels[index] = img.pixels[newIndex];
+                        swirlImage.pixels[index + 1] = img.pixels[newIndex + 1];
+                        swirlImage.pixels[index + 2] = img.pixels[newIndex + 2];
+                        swirlImage.pixels[index + 3] = img.pixels[newIndex + 3];
+                    } else {
+                        swirlImage.pixels[index] = 0;
+                        swirlImage.pixels[index + 1] = 0;
+                        swirlImage.pixels[index + 2] = 0;
+                        swirlImage.pixels[index + 3] = 255;
+                    }
+                }
+            }
+
+            swirlImage.updatePixels();
+            image(swirlImage, 0, 0);
+        }
+        
+        // File input handler
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadImage(url, function(loadedImg) {
+                    img = loadedImg;
+                    resizeCanvas(img.width, img.height);
+                    loop();
+                }, function(error) {
+                    console.error('Error loading image:', error);
+                });
+            }
+        });
+        
+        // Swirl intensity control
+        document.getElementById('swirlIntensity').addEventListener('input', function(e) {
+            swirlIntensity = parseFloat(e.target.value);
+            document.getElementById('swirlValue').textContent = swirlIntensity;
+            if (img) {
+                loop();
+            }
+        });
+    </script>
+</body>
+</html>

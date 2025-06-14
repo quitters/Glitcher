@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Effects Studio</title>
+  <link rel="stylesheet" href="css/studio.css">
+  <link rel="stylesheet" href="css/context-menu.css">
+</head>
+<body>
+  <div class="studio-container">
+    <!-- Control Panel -->
+    <div class="control-panel">
+      <div class="panel-header">
+        <div class="panel-title">Effects Studio</div>
+        <div class="panel-subtitle">Professional Image Processing Suite</div>
+      </div>
+
+      <!-- Category Tabs -->
+      <div class="category-tabs">
+        <button class="tab-button active" data-category="artistic">🎨 Artistic</button>
+        <button class="tab-button" data-category="distortion">🌀 Distortion</button>
+        <button class="tab-button" data-category="color">🌈 Color</button>
+        <button class="tab-button" data-category="filter">🔍 Filter</button>
+        <button class="tab-button" data-category="experimental">⚗️ Experimental</button>
+        <button class="tab-button" data-category="global">⚙️ Global</button>
+      </div>
+
+      <!-- Effect Chain Display -->
+      <div class="control-group">
+        <div class="group-title">🔗 Effect Chain</div>
+        <div class="effect-chain" id="effect-chain">
+          <!-- Active effects will appear here -->
+        </div>
+        <button id="clear-effects-btn" class="control-button danger-button">Clear All</button>
+      </div>
+
+      <!-- File Upload -->
+      <div class="control-group" data-category="global">
+        <div class="group-title">📁 Image Input</div>
+        <div class="file-upload-area">
+          <div class="upload-icon">📷</div>
+          <div class="upload-text">Click or Drop Image Here</div>
+          <div class="upload-hint">Supports JPG, PNG, WebP</div>
+          <input type="file" id="image-input" accept="image/*">
+        </div>
+      </div>
+
+      <!-- Global Intensity -->
+      <div class="control-group" data-category="global">
+        <div class="group-title">🎚️ Global Intensity</div>
+        <div class="slider-container">
+          <div class="slider-label">
+            <span>Intensity</span>
+            <span class="slider-value" id="global-intensity-value">100</span>
+          </div>
+          <input type="range" class="control-slider" id="global-intensity" min="0" max="200" value="100">
+        </div>
+      </div>
+
+      <!-- Effects Container - Will be populated by JavaScript -->
+      <div id="effects-container">
+        <!-- Effect categories are now defined separately below -->
+      </div>
+
+      <!-- Additional Controls Section -->
+      <div class="control-group" data-category="global">
+        <div class="group-title">⚡ Quick Actions</div>
+        <div class="button-grid">
+          <button id="quick-save-btn" class="control-button">💾 Save</button>
+          <button id="quick-reset-btn" class="control-button danger-button">🔄 Reset</button>
+        </div>
+      </div>
+      
+      <!-- Global Controls -->
+      <div class="control-group" data-category="global">
+        <div class="group-title">🎛️ Global Controls</div>
+        <div class="button-grid">
+          <button id="play-pause-btn" class="control-button success-button">⏸️ Pause</button>
+          <button id="reset-btn" class="control-button danger-button">🔄 Reset</button>
+          <button id="snapshot-btn" class="control-button">📸 Snapshot</button>
+          <button id="randomize-btn" class="control-button">🎲 Randomize</button>
+        </div>
+      </div>
+
+      <!-- Presets -->
+      <div class="control-group" data-category="global">
+        <div class="group-title">💾 Presets</div>
+        <select id="preset-select" class="control-select">
+          <option value="">-- Select Preset --</option>
+          <optgroup label="Artistic">
+            <option value="vintage-photo">Vintage Photo</option>
+            <option value="newspaper-print">Newspaper Print</option>
+            <option value="oil-painting">Oil Painting</option>
+          </optgroup>
+          <optgroup label="Distortion">
+            <option value="digital-chaos">Digital Chaos</option>
+            <option value="liquid-dream">Liquid Dream</option>
+            <option value="mirror-dimension">Mirror Dimension</option>
+          </optgroup>
+          <optgroup label="Color">
+            <option value="neon-nights">Neon Nights</option>
+            <option value="cyberpunk">Cyberpunk</option>
+          </optgroup>
+          <optgroup label="Filter">
+            <option value="film-noir">Film Noir</option>
+            <option value="dreamy-soft">Dreamy Soft</option>
+          </optgroup>
+          <optgroup label="Experimental">
+            <option value="pixel-art">Pixel Art</option>
+            <option value="data-corruption">Data Corruption</option>
+          </optgroup>
+          <optgroup label="Custom" id="custom-presets">
+            <!-- Custom presets will be added here -->
+          </optgroup>
+        </select>
+        <div class="button-grid">
+          <button id="save-preset-btn" class="control-button">💾 Save Preset</button>
+          <button id="load-preset-btn" class="control-button">📂 Load Preset</button>
+          <input type="file" id="preset-file-input" accept=".json" style="display: none;">
+        </div>
+      </div>
+
+      <!-- Advanced Features -->
+      <div class="control-group" data-category="global">
+        <div class="group-title">🚀 Advanced</div>
+        
+        <!-- Batch Processing -->
+        <div class="sub-group">
+          <div class="sub-title">📦 Batch Processing</div>
+          <div class="file-upload-area small">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Select Multiple Images</div>
+            <input type="file" id="batch-file-input" accept="image/*" multiple>
+          </div>
+          <div class="batch-info">
+            <span id="batch-file-count">0</span> files selected
+          </div>
+          <div class="select-container">
+            <label for="batch-format">Output Format:</label>
+            <select id="batch-format" class="control-select small">
+              <option value="png">PNG</option>
+              <option value="jpg">JPG</option>
+              <option value="webp">WebP</option>
+            </select>
+          </div>
+          <button id="batch-process-btn" class="control-button" disabled>Process All</button>
+          <div id="batch-progress" style="display: none;">
+            <div class="progress-bar-container">
+              <div id="batch-progress-bar" class="progress-bar"></div>
+            </div>
+            <div id="batch-status">Processing...</div>
+          </div>
+        </div>
+        
+        <!-- Animation Controls -->
+        <div class="sub-group">
+          <div class="sub-title">🎞️ Animation</div>
+          <div class="button-grid">
+            <button id="record-btn" class="control-button">🔴 Record</button>
+            <button id="animation-speed-btn" class="control-button">Speed: 1x</button>
+          </div>
+          <div class="select-container">
+            <label for="frame-rate">Frame Rate:</label>
+            <select id="frame-rate" class="control-select small">
+              <option value="15">15 FPS</option>
+              <option value="30" selected>30 FPS</option>
+              <option value="60">60 FPS</option>
+            </select>
+          </div>
+          <div class="select-container">
+            <label for="max-duration">Max Duration:</label>
+            <select id="max-duration" class="control-select small">
+              <option value="3">3 seconds</option>
+              <option value="5" selected>5 seconds</option>
+              <option value="10">10 seconds</option>
+              <option value="15">15 seconds</option>
+            </select>
+          </div>
+          <div id="recording-indicator" style="display: none;">
+            <div class="recording-dot"></div>
+            <span id="recording-time">0.0s</span>
+          </div>
+          <div id="gif-loading" style="display: none;">
+            <div class="spinner"></div>
+            <span>Creating GIF...</span>
+          </div>
+        </div>
+        
+        <!-- Auto-Save -->
+        <div class="sub-group">
+          <div class="sub-title">💾 Auto-Save</div>
+          <div class="checkbox-container">
+            <input type="checkbox" id="auto-save-toggle" checked>
+            <label for="auto-save-toggle">Enable Auto-Save</label>
+            <div id="auto-save-indicator" class="indicator"></div>
+          </div>
+          <button id="restore-state-btn" class="control-button">Restore Last State</button>
+        </div>
+        
+        <!-- Performance -->
+        <div class="sub-group">
+          <div class="sub-title">📊 Performance</div>
+          <button id="performance-toggle" class="control-button">Show Performance Graph</button>
+          <div id="performance-graph" style="display: none;">
+            <canvas id="performance-graph-canvas" width="250" height="100"></canvas>
+          </div>
+        </div>
+        
+        <!-- UI Controls -->
+        <div class="sub-group">
+          <div class="sub-title">🖌️ Interface</div>
+          <div class="button-grid">
+            <button id="theme-toggle" class="control-button">🌙</button>
+            <button id="fullscreen-btn" class="control-button">⏺️</button>
+            <button id="help-btn" class="control-button">❓</button>
+          </div>
+          <div class="zoom-controls">
+            <button id="zoom-out-btn" class="control-button small">-</button>
+            <span id="zoom-level">100%</span>
+            <button id="zoom-in-btn" class="control-button small">+</button>
+            <button id="zoom-reset-btn" class="control-button small">Reset</button>
+          </div>
+        </div>
+        
+        <!-- Effect Search -->
+        <div class="search-container">
+          <input type="text" id="effect-search" placeholder="Search effects...">
+          <button id="clear-search" class="control-button small">✕</button>
+        </div>
+      </div>
+
+      <!-- Effect Categories -->
+      <!-- Artistic Effects -->
+      <div class="control-group effect-category" data-category="artistic" style="display: none;">
+        <div class="group-title">🎨 Artistic Effects</div>
+        <div id="artistic-effects" class="effects-container"></div>
+      </div>
+      
+      <!-- Distortion Effects -->
+      <div class="control-group effect-category" data-category="distortion" style="display: none;">
+        <div class="group-title">🌀 Distortion Effects</div>
+        <div id="distortion-effects" class="effects-container"></div>
+      </div>
+      
+      <!-- Color Effects -->
+      <div class="control-group effect-category" data-category="color" style="display: none;">
+        <div class="group-title">🎨 Color Effects</div>
+        <div id="color-effects" class="effects-container"></div>
+      </div>
+      
+      <!-- Filter Effects -->
+      <div class="control-group effect-category" data-category="filter" style="display: none;">
+        <div class="group-title">🔍 Filter Effects</div>
+        <div id="filter-effects" class="effects-container"></div>
+      </div>
+      
+      <!-- Experimental Effects -->
+      <div class="control-group effect-category" data-category="experimental" style="display: none;">
+        <div class="group-title">🧪 Experimental Effects</div>
+        <div id="experimental-effects" class="effects-container"></div>
+      </div>
+      
+      <!-- Performance Monitor -->
+      <div class="performance-monitor">
+        <div id="fps-counter">0 FPS</div>
+        <div id="processing-time">0 ms</div>
+      </div>
+    </div>
+
+    <!-- Canvas Area -->
+    <div class="canvas-area">
+      <canvas id="canvas" style="display: none;"></canvas>
+      <div id="canvas-placeholder">
+        <div class="placeholder-icon">🖼️</div>
+        <div class="placeholder-text">Upload an image to begin</div>
+      </div>
+      <div id="help-overlay" class="hidden">
+        <div class="help-content">
+          <h2>Keyboard Shortcuts</h2>
+          <ul>
+            <li><strong>R</strong> - Reset image</li>
+            <li><strong>S</strong> - Save snapshot</li>
+            <li><strong>P</strong> - Pause/resume</li>
+            <li><strong>C</strong> - Clear all effects</li>
+            <li><strong>Q</strong> - Randomize effects</li>
+            <li><strong>Space</strong> - Toggle animation</li>
+            <li><strong>1-5</strong> - Switch categories</li>
+          </ul>
+          <button id="close-help">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/presets.js"></script>
+  <script src="js/advanced.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>

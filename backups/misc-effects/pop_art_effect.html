@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pop Art Effect</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 5px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pop Art Effect</h1>
+    <div class="controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <div>
+            <label>Style: 
+                <select id="popStyle">
+                    <option value="warhol">Andy Warhol</option>
+                    <option value="lichtenstein">Roy Lichtenstein</option>
+                    <option value="neon">Neon Pop</option>
+                    <option value="psychedelic">Psychedelic</option>
+                </select>
+            </label>
+        </div>
+        <div>
+            <label>Color Levels: <input type="range" id="colorLevels" min="3" max="8" value="4"></label>
+            <span id="levelsValue">4</span>
+        </div>
+        <div>
+            <label>Grid Layout: 
+                <select id="gridLayout">
+                    <option value="1x1">Single</option>
+                    <option value="2x2">2x2 Grid</option>
+                    <option value="3x3">3x3 Grid</option>
+                    <option value="2x1">2x1 Strip</option>
+                </select>
+            </label>
+        </div>
+    </div>
+    
+    <script>
+        let img;
+        let originalImg;
+        let popStyle = 'warhol';
+        let colorLevels = 4;
+        let gridLayout = '1x1';
+        
+        // Color palettes for different styles
+        let colorPalettes = {
+            warhol: [
+                [[255, 0, 255], [255, 255, 0], [0, 255, 255], [255, 0, 0]],
+                [[0, 255, 0], [255, 165, 0], [138, 43, 226], [255, 20, 147]],
+                [[255, 215, 0], [50, 205, 50], [255, 69, 0], [30, 144, 255]],
+                [[255, 105, 180], [124, 252, 0], [255, 140, 0], [186, 85, 211]]
+            ],
+            lichtenstein: [
+                [[255, 0, 0], [255, 255, 0], [0, 0, 255], [0, 0, 0]],
+                [[255, 192, 203], [173, 216, 230], [255, 255, 224], [128, 128, 128]]
+            ],
+            neon: [
+                [[255, 0, 255], [0, 255, 255], [255, 255, 0], [255, 0, 0]],
+                [[57, 255, 20], [255, 20, 147], [0, 191, 255], [255, 165, 0]]
+            ],
+            psychedelic: [
+                [[255, 0, 255], [255, 255, 0], [0, 255, 0], [255, 0, 0]],
+                [[138, 43, 226], [255, 20, 147], [50, 205, 50], [255, 140, 0]]
+            ]
+        };
+        
+        function setup() {
+            createCanvas(800, 600);
+            background(255);
+            textAlign(CENTER, CENTER);
+            fill(100);
+            text("Upload an image to apply pop art effect", width/2, height/2);
+        }
+        
+        function draw() {
+            if (img && originalImg) {
+                applyPopArtEffect();
+                noLoop();
+            }
+        }
+        
+        function applyPopArtEffect() {
+            let [gridX, gridY] = gridLayout.split('x').map(n => parseInt(n));
+            let cellWidth = originalImg.width / gridX;
+            let cellHeight = originalImg.height / gridY;
+            
+            resizeCanvas(originalImg.width, originalImg.height);
+            background(255);
+            
+            for (let gy = 0; gy < gridY; gy++) {
+                for (let gx = 0; gx < gridX; gx++) {
+                    let cellIndex = gy * gridX + gx;
+                    let processedImg = createPopArtCell(originalImg, cellIndex);
+                    image(processedImg, gx * cellWidth, gy * cellHeight, cellWidth, cellHeight);
+                }
+            }
+        }
+        
+        function createPopArtCell(sourceImg, cellIndex) {
+            let cellImg = sourceImg.get();
+            cellImg.loadPixels();
+            
+            // Get color palette for this cell
+            let palettes = colorPalettes[popStyle];
+            let palette = palettes[cellIndex % palettes.length];
+            
+            // Posterize the image
+            for (let i = 0; i < cellImg.pixels.length; i += 4) {
+                let r = cellImg.pixels[i];
+                let g = cellImg.pixels[i + 1];
+                let b = cellImg.pixels[i + 2];
+                
+                // Convert to brightness
+                let brightness = (r + g + b) / 3;
+                
+                // Map brightness to color palette
+                let colorIndex = Math.floor(brightness / 255 * (palette.length - 1));
+                colorIndex = constrain(colorIndex, 0, palette.length - 1);
+                
+                let newColor = palette[colorIndex];
+                
+                // Apply style-specific modifications
+                switch(popStyle) {
+                    case 'warhol':
+                        // High contrast, bold colors
+                        cellImg.pixels[i] = newColor[0];
+                        cellImg.pixels[i + 1] = newColor[1];
+                        cellImg.pixels[i + 2] = newColor[2];
+                        break;
+                        
+                    case 'lichtenstein':
+                        // Ben-day dots simulation with solid colors
+                        let dotPattern = (Math.floor(i/4) % 3 === 0) ? 1.0 : 0.8;
+                        cellImg.pixels[i] = newColor[0] * dotPattern;
+                        cellImg.pixels[i + 1] = newColor[1] * dotPattern;
+                        cellImg.pixels[i + 2] = newColor[2] * dotPattern;
+                        break;
+                        
+                    case 'neon':
+                        // Glowing effect with oversaturation
+                        cellImg.pixels[i] = Math.min(255, newColor[0] * 1.2);
+                        cellImg.pixels[i + 1] = Math.min(255, newColor[1] * 1.2);
+                        cellImg.pixels[i + 2] = Math.min(255, newColor[2] * 1.2);
+                        break;
+                        
+                    case 'psychedelic':
+                        // Color shifting based on position
+                        let x = (i/4) % sourceImg.width;
+                        let y = Math.floor((i/4) / sourceImg.width);
+                        let wave = Math.sin(x * 0.1) * Math.cos(y * 0.1);
+                        let shift = wave > 0 ? 1.3 : 0.7;
+                        cellImg.pixels[i] = Math.min(255, newColor[0] * shift);
+                        cellImg.pixels[i + 1] = Math.min(255, newColor[1] * shift);
+                        cellImg.pixels[i + 2] = Math.min(255, newColor[2] * shift);
+                        break;
+                }
+            }
+            
+            cellImg.updatePixels();
+            return cellImg;
+        }
+        
+        // File input handler
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadImage(url, function(loadedImg) {
+                    originalImg = loadedImg;
+                    img = loadedImg;
+                    loop();
+                }, function(error) {
+                    console.error('Error loading image:', error);
+                });
+            }
+        });
+        
+        // Style control
+        document.getElementById('popStyle').addEventListener('change', function(e) {
+            popStyle = e.target.value;
+            if (img) {
+                loop();
+            }
+        });
+        
+        // Color levels control
+        document.getElementById('colorLevels').addEventListener('input', function(e) {
+            colorLevels = parseInt(e.target.value);
+            document.getElementById('levelsValue').textContent = colorLevels;
+            if (img) {
+                loop();
+            }
+        });
+        
+        // Grid layout control
+        document.getElementById('gridLayout').addEventListener('change', function(e) {
+            gridLayout = e.target.value;
+            if (img) {
+                loop();
+            }
+        });
+    </script>
+</body>
+</html>

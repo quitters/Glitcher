@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixelization & Droste Effects</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 5px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pixelization & Droste Effects</h1>
+    <div class="controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <div>
+            <label>Effect Type: 
+                <select id="effectType">
+                    <option value="pixelization">Pixelization</option>
+                    <option value="droste">Droste (Recursive)</option>
+                </select>
+            </label>
+            <div id="additionalControls"></div>
+        </div>
+    </div>
+    
+    <script>
+        let img;
+        let originalImg;
+        let currentEffect = 'pixelization';
+        let pixelSize = 10;
+        let drosteDepth = 5;
+        let drosteScale = 0.6;
+        let drosteOffsetX = 0.2;
+        let drosteOffsetY = 0.2;
+        
+        function setup() {
+            createCanvas(800, 600);
+            background(255);
+            textAlign(CENTER, CENTER);
+            fill(100);
+            text("Upload an image to apply pixelization or droste effects", width/2, height/2);
+            updateControls();
+        }
+        
+        function draw() {
+            if (img && originalImg) {
+                applyEffect();
+                noLoop();
+            }
+        }
+        
+        function applyEffect() {
+            switch(currentEffect) {
+                case 'pixelization':
+                    applyPixelization();
+                    break;
+                case 'droste':
+                    applyDrosteEffect();
+                    break;
+            }
+        }
+        
+        function applyPixelization() {
+            background(255);
+            originalImg.loadPixels();
+
+            for (let y = 0; y < originalImg.height; y += pixelSize) {
+                for (let x = 0; x < originalImg.width; x += pixelSize) {
+                    if (x < originalImg.width && y < originalImg.height) {
+                        let index = (x + y * originalImg.width) * 4;
+                        let r = originalImg.pixels[index];
+                        let g = originalImg.pixels[index + 1];
+                        let b = originalImg.pixels[index + 2];
+
+                        fill(r, g, b);
+                        noStroke();
+                        rect(x, y, pixelSize, pixelSize);
+                    }
+                }
+            }
+        }
+        
+        function applyDrosteEffect() {
+            background(255);
+            drosteRecursive(originalImg, 0, 0, originalImg.width, originalImg.height, drosteDepth);
+        }
+
+        function drosteRecursive(img, x, y, w, h, depth) {
+            if (depth === 0) return;
+
+            image(img, x, y, w, h);
+            let newX = x + w * drosteOffsetX;
+            let newY = y + h * drosteOffsetY;
+            let newW = w * drosteScale;
+            let newH = h * drosteScale;
+            
+            drosteRecursive(img, newX, newY, newW, newH, depth - 1);
+        }
+        
+        function updateControls() {
+            const controlsDiv = document.getElementById('additionalControls');
+            controlsDiv.innerHTML = '';
+            
+            switch(currentEffect) {
+                case 'pixelization':
+                    controlsDiv.innerHTML = `
+                        <label>Pixel Size: <input type="range" id="pixelSizeSlider" min="2" max="50" value="${pixelSize}"></label>
+                        <span id="pixelSizeValue">${pixelSize}</span>
+                    `;
+                    document.getElementById('pixelSizeSlider').addEventListener('input', function(e) {
+                        pixelSize = parseInt(e.target.value);
+                        document.getElementById('pixelSizeValue').textContent = pixelSize;
+                        if (img) loop();
+                    });
+                    break;
+                case 'droste':
+                    controlsDiv.innerHTML = `
+                        <label>Depth: <input type="range" id="drosteDepthSlider" min="2" max="10" value="${drosteDepth}"></label>
+                        <span id="drosteDepthValue">${drosteDepth}</span><br>
+                        <label>Scale: <input type="range" id="drosteScaleSlider" min="0.3" max="0.8" step="0.05" value="${drosteScale}"></label>
+                        <span id="drosteScaleValue">${drosteScale}</span><br>
+                        <label>Offset X: <input type="range" id="drosteOffsetXSlider" min="0.1" max="0.4" step="0.05" value="${drosteOffsetX}"></label>
+                        <span id="drosteOffsetXValue">${drosteOffsetX}</span><br>
+                        <label>Offset Y: <input type="range" id="drosteOffsetYSlider" min="0.1" max="0.4" step="0.05" value="${drosteOffsetY}"></label>
+                        <span id="drosteOffsetYValue">${drosteOffsetY}</span>
+                    `;
+                    
+                    document.getElementById('drosteDepthSlider').addEventListener('input', function(e) {
+                        drosteDepth = parseInt(e.target.value);
+                        document.getElementById('drosteDepthValue').textContent = drosteDepth;
+                        if (img) loop();
+                    });
+                    
+                    document.getElementById('drosteScaleSlider').addEventListener('input', function(e) {
+                        drosteScale = parseFloat(e.target.value);
+                        document.getElementById('drosteScaleValue').textContent = drosteScale;
+                        if (img) loop();
+                    });
+                    
+                    document.getElementById('drosteOffsetXSlider').addEventListener('input', function(e) {
+                        drosteOffsetX = parseFloat(e.target.value);
+                        document.getElementById('drosteOffsetXValue').textContent = drosteOffsetX;
+                        if (img) loop();
+                    });
+                    
+                    document.getElementById('drosteOffsetYSlider').addEventListener('input', function(e) {
+                        drosteOffsetY = parseFloat(e.target.value);
+                        document.getElementById('drosteOffsetYValue').textContent = drosteOffsetY;
+                        if (img) loop();
+                    });
+                    break;
+            }
+        }
+        
+        // File input handler
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadImage(url, function(loadedImg) {
+                    originalImg = loadedImg;
+                    img = loadedImg;
+                    resizeCanvas(img.width, img.height);
+                    loop();
+                }, function(error) {
+                    console.error('Error loading image:', error);
+                });
+            }
+        });
+        
+        // Effect type control
+        document.getElementById('effectType').addEventListener('change', function(e) {
+            currentEffect = e.target.value;
+            updateControls();
+            if (img) {
+                loop();
+            }
+        });

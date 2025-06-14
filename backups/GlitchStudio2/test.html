@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitchStudio2 - Test</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/modal.css">
+    <link rel="stylesheet" href="css/context-menu.css">
+    <link rel="stylesheet" href="css/presets.css">
+    <link rel="stylesheet" href="css/shortcuts.css">
+    <link rel="stylesheet" href="css/neumorphic.css">
+    <link rel="stylesheet" href="css/tutorial.css">
+    <link rel="stylesheet" href="css/overlay-fix.css">
+</head>
+<body class="dark-mode">
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="app-logo">
+                <span class="logo-text">GlitchStudio</span>
+                <span class="logo-version">2.1</span>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" id="help-btn" title="Help">
+                    <span>❓</span>
+                </button>
+                <button class="header-btn" id="theme-toggle-btn" title="Toggle Theme">
+                    <span>🌓</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Canvas Section -->
+            <section class="canvas-section">
+                <div class="canvas-container">
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <div id="canvas-placeholder" class="canvas-placeholder">
+                        <div class="placeholder-content">
+                            <div class="upload-icon">📸</div>
+                            <h3>Drop an image here</h3>
+                            <p>or click to select</p>
+                            <input type="file" id="image-input" accept="image/*" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="action-btn" id="quick-save-btn" title="Save Image">
+                        <span>💾 Save</span>
+                    </button>
+                    <button class="action-btn" id="quick-reset-btn" title="Reset">
+                        <span>🔄 Reset</span>
+                    </button>
+                    <button class="action-btn" id="clear-effects-btn" title="Clear Effects">
+                        <span>🗑️ Clear</span>
+                    </button>
+                    <button class="action-btn" id="new-image-btn" title="New Image">
+                        <span>📁 New</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Controls Section -->
+            <section class="controls-section">
+                <!-- Category Tabs -->
+                <div class="category-tabs">
+                    <button class="tab-button active" data-category="all">All</button>
+                    <button class="tab-button" data-category="artistic">Artistic</button>
+                    <button class="tab-button" data-category="color">Color</button>
+                    <button class="tab-button" data-category="distortion">Distortion</button>
+                    <button class="tab-button" data-category="filter">Filter</button>
+                    <button class="tab-button" data-category="glitch">Glitch</button>
+                    <button class="tab-button" data-category="experimental">Experimental</button>
+                </div>
+
+                <!-- Effects Container -->
+                <div class="effects-container" id="effects-container">
+                    <!-- Effects will be dynamically added here -->
+                </div>
+
+                <!-- Global Controls -->
+                <div class="global-controls">
+                    <div class="control-group">
+                        <div class="group-title">Global Settings</div>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span>Global Intensity</span>
+                                <span id="global-intensity-value" class="slider-value">100</span>
+                            </div>
+                            <input type="range" id="global-intensity" class="control-slider" min="0" max="200" value="100">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Effect Chain -->
+                <div class="effect-chain-container">
+                    <h3>Active Effects</h3>
+                    <div class="effect-chain" id="effect-chain">
+                        <div class="chain-empty">No effects applied</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Processing Overlay -->
+    <div id="processing-overlay" class="processing-overlay">
+        <div class="processing-spinner"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

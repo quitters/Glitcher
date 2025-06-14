@@ -1,0 +1,45 @@
+/* Context Menu Styling */
+.context-menu {
+  position: fixed;
+  display: none;
+  background: linear-gradient(145deg, #2a2a40, #1f1f35);
+  border-radius: 10px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.context-menu.show {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
+
+.context-menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.context-menu li {
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.context-menu li:last-child {
+  border-bottom: none;
+}
+
+.context-menu li:hover {
+  background: rgba(78, 205, 196, 0.2);
+  color: #4ecdc4;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}

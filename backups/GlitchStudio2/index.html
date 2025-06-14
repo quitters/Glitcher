@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GlitchStudio2</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/neumorphic.css">
+  <link rel="stylesheet" href="css/context-menu.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/modal.css">
+  <link rel="stylesheet" href="css/tutorial.css">
+  <link rel="stylesheet" href="css/presets.css">
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/shortcuts.css">
+  <link rel="stylesheet" href="css/overlay-fix.css">
+</head>
+<body>
+  <div class="studio-container">
+    <!-- Control Panel -->
+    <div class="control-panel">
+      <div class="panel-header">
+        <div class="panel-title">GlitchStudio2</div>
+        <div class="panel-subtitle">Advanced Image Processing & Glitch Effects</div>
+      </div>
+
+      <!-- Category Tabs -->
+      <div class="category-tabs">
+        <button class="tab-button active" data-category="artistic">🎨 Artistic</button>
+        <button class="tab-button" data-category="distortion">🌀 Distortion</button>
+        <button class="tab-button" data-category="color">🌈 Color</button>
+        <button class="tab-button" data-category="filter">🔍 Filter</button>
+        <button class="tab-button" data-category="glitch">⚡ Glitch</button>
+        <button class="tab-button" data-category="experimental">⚗️ Experimental</button>
+        <button class="tab-button" data-category="presets">💾 Presets</button>
+        <button class="tab-button" data-category="global">⚙️ Global</button>
+      </div>
+
+      <!-- Effect Chain Display -->
+      <div class="control-group">
+        <div class="group-title">🔗 Effect Chain</div>
+        <div class="effect-chain" id="effect-chain">
+          <!-- Active effects will appear here -->
+        </div>
+        <button id="clear-effects-btn" class="control-button danger-button">Clear All</button>
+      </div>
+
+      <!-- Global Settings (removed file upload from here) -->
+      <div class="control-group" data-category="global">
+        <div class="group-title">⚙️ Global Settings</div>
+        <!-- Additional global settings can go here -->
+      </div>
+
+      <!-- Global Intensity -->
+      <div class="control-group" data-category="global">
+        <div class="group-title">🎚️ Global Intensity</div>
+        <div class="slider-container">
+          <div class="slider-label">
+            <span>Intensity</span>
+            <span class="slider-value" id="global-intensity-value">100</span>
+          </div>
+          <input type="range" class="control-slider" id="global-intensity" min="0" max="200" value="100">
+        </div>
+      </div>
+
+      <!-- Effects Container - Will be populated by JavaScript -->
+      <div id="effects-container">
+        <!-- Effect categories will be populated here -->
+      </div>
+      
+      <!-- Presets Panel -->
+      <div class="control-group presets-panel" data-category="presets" style="display: none;">
+        <div class="group-title">💾 Saved Presets</div>
+        
+        <!-- Presets Actions -->
+        <div class="presets-actions">
+          <button id="import-presets-btn" class="control-button small-button" title="Import presets from file">📥 Import</button>
+          <button id="export-presets-btn" class="control-button small-button" title="Export presets to file">📤 Export</button>
+          <button id="shortcuts-help-btn" class="control-button small-button" title="Show keyboard shortcuts (F1)">⌨️ Shortcuts</button>
+          <input type="file" id="import-presets-file" accept=".json" style="display: none;">
+        </div>
+        
+        <!-- Presets Grid -->
+        <div class="presets-grid" id="presets-grid">
+          <!-- Presets will be populated here -->
+          
+          <!-- New Preset Card -->
+          <div class="preset-card new-preset-card" id="new-preset-btn">
+            <div class="new-preset-icon">+</div>
+            <div class="new-preset-text">Save Current</div>
+          </div>
+        </div>
+        
+        <!-- Empty State (shown when no presets) -->
+        <div class="presets-empty" id="presets-empty" style="display: none;">
+          <div class="presets-empty-icon">💾</div>
+          <div class="presets-empty-text">No presets saved yet</div>
+          <div class="presets-empty-subtext">Create effects you like and save them as presets for quick access</div>
+          <button class="control-button accent-button" id="create-first-preset-btn">Create Your First Preset</button>
+        </div>
+      </div>
+      
+      <!-- Additional Controls Section -->
+      <div class="control-group" data-category="global">
+        <div class="group-title">⚡ Quick Actions</div>
+        <div class="button-grid">
+          <button id="quick-save-btn" class="control-button" title="Save current image (Ctrl+S)">💾 Save</button>
+          <button id="quick-reset-btn" class="control-button danger-button" title="Reset to original image (Ctrl+R)">🔄 Reset</button>
+          <button id="new-image-btn" class="control-button accent-button" title="Start with a new image">📷 New Image</button>
+          <button id="help-btn" class="control-button" title="Show keyboard shortcuts (F1)">❓ Help</button>
+          <button id="theme-toggle-btn" class="control-button" title="Toggle dark/light theme (Ctrl+T)">🌓 Theme</button>
+          <button id="presets-btn" class="control-button" title="Show presets panel (Ctrl+Shift+P)">📋 Presets</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas Area -->
+    <div class="canvas-area">
+      <canvas id="canvas" style="display: none;"></canvas>
+      <div id="canvas-placeholder" class="file-upload-area">
+        <div class="placeholder-icon">🖼️</div>
+        <div class="placeholder-text">Upload an image to begin</div>
+        <div class="upload-hint">Click here or drop an image (JPG, PNG, WebP)</div>
+      </div>
+      <!-- File input moved outside to ensure proper functionality -->
+      <input type="file" id="image-input" accept="image/*" style="position: absolute; opacity: 0; width: 1px; height: 1px;">
+      <!-- Processing overlay with spinner -->
+      <div class="processing-overlay" id="processing-overlay">
+        <div class="processing-spinner"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <!-- Core -->
+  <script src="js/main.js" type="module"></script>
+</body>
+</html>

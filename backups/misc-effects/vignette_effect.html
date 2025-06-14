@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vignette Effect</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Vignette Effect</h1>
+    <div class="controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <div>
+            <label>Vignette Strength: <input type="range" id="vignetteStrength" min="0.1" max="1.0" step="0.1" value="0.3"></label>
+            <span id="vignetteValue">0.3</span>
+        </div>
+    </div>
+    
+    <script>
+        let img;
+        let vignetteStrength = 0.3;
+        
+        function setup() {
+            createCanvas(800, 600);
+            background(255);
+            textAlign(CENTER, CENTER);
+            fill(100);
+            text("Upload an image to apply vignette effect", width/2, height/2);
+        }
+        
+        function draw() {
+            if (img) {
+                applyVignetteEffect();
+                noLoop();
+            }
+        }
+        
+        function applyVignetteEffect() {
+            image(img, 0, 0);
+
+            // Apply vignette effect
+            img.loadPixels();
+            let centerX = img.width / 2;
+            let centerY = img.height / 2;
+            let maxDistance = dist(0, 0, centerX, centerY);
+            
+            for (let x = 0; x < img.width; x++) {
+                for (let y = 0; y < img.height; y++) {
+                    let index = (x + y * img.width) * 4;
+                    let distance = dist(x, y, centerX, centerY);
+                    let vignetteFactor = map(distance, 0, maxDistance, 1, vignetteStrength);
+                    
+                    img.pixels[index] *= vignetteFactor;
+                    img.pixels[index + 1] *= vignetteFactor;
+                    img.pixels[index + 2] *= vignetteFactor;
+                }
+            }
+            img.updatePixels();
+            image(img, 0, 0);
+        }
+        
+        // File input handler
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadImage(url, function(loadedImg) {
+                    img = loadedImg;
+                    resizeCanvas(img.width, img.height);
+                    loop();
+                }, function(error) {
+                    console.error('Error loading image:', error);
+                });
+            }
+        });
+        
+        // Vignette strength control
+        document.getElementById('vignetteStrength').addEventListener('input', function(e) {
+            vignetteStrength = parseFloat(e.target.value);
+            document.getElementById('vignetteValue').textContent = vignetteStrength;
+            if (img) {
+                loop();
+            }
+        });
+    </script>
+</body>
+</html>

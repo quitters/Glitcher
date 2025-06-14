@@ -1,0 +1,227 @@
+/**
+ * GlitchStudio2 - Neumorphic CSS
+ * Neumorphic styling for UI elements
+ */
+
+:root {
+  /* Neumorphic variables */
+  --neu-distance: 5px;
+  --neu-blur: 10px;
+  --neu-shadow-dark: rgba(0, 0, 0, 0.1);
+  --neu-shadow-light: rgba(255, 255, 255, 0.8);
+  
+  /* Dark mode neumorphic variables */
+  --dark-neu-shadow-dark: rgba(0, 0, 0, 0.4);
+  --dark-neu-shadow-light: rgba(255, 255, 255, 0.05);
+}
+
+/* Neumorphic Control Group */
+.control-group {
+  background-color: var(--bg-color);
+  box-shadow: 
+    var(--neu-distance) var(--neu-distance) var(--neu-blur) var(--neu-shadow-dark),
+    calc(-1 * var(--neu-distance)) calc(-1 * var(--neu-distance)) var(--neu-blur) var(--neu-shadow-light);
+}
+
+body.dark-mode .control-group {
+  background-color: var(--dark-bg-color);
+  box-shadow: 
+    var(--neu-distance) var(--neu-distance) var(--neu-blur) var(--dark-neu-shadow-dark),
+    calc(-1 * var(--neu-distance)) calc(-1 * var(--neu-distance)) var(--neu-blur) var(--dark-neu-shadow-light);
+}
+
+/* Neumorphic Buttons */
+.control-button {
+  box-shadow: 
+    2px 2px 5px var(--neu-shadow-dark),
+    -2px -2px 5px var(--neu-shadow-light);
+  transition: all 0.2s ease;
+}
+
+.control-button:active {
+  box-shadow: 
+    inset 2px 2px 5px var(--neu-shadow-dark),
+    inset -2px -2px 5px var(--neu-shadow-light);
+}
+
+/* Button Variants */
+.danger-button {
+  background-color: var(--danger-color-transparent);
+  color: var(--danger-color);
+}
+
+.danger-button:hover {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.accent-button {
+  background-color: var(--accent-color-transparent);
+  color: var(--accent-color);
+}
+
+.accent-button:hover {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+body.dark-mode .control-button {
+  box-shadow: 
+    2px 2px 5px var(--dark-neu-shadow-dark),
+    -2px -2px 5px var(--dark-neu-shadow-light);
+}
+
+body.dark-mode .control-button:active {
+  box-shadow: 
+    inset 2px 2px 5px var(--dark-neu-shadow-dark),
+    inset -2px -2px 5px var(--dark-neu-shadow-light);
+}
+
+/* Neumorphic Sliders */
+input[type="range"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--bg-color);
+  box-shadow: 
+    inset 2px 2px 5px var(--neu-shadow-dark),
+    inset -2px -2px 5px var(--neu-shadow-light);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  cursor: pointer;
+  box-shadow: 
+    2px 2px 5px var(--neu-shadow-dark),
+    -2px -2px 5px var(--neu-shadow-light);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  cursor: pointer;
+  border: none;
+  box-shadow: 
+    2px 2px 5px var(--neu-shadow-dark),
+    -2px -2px 5px var(--neu-shadow-light);
+}
+
+body.dark-mode input[type="range"] {
+  background: var(--dark-bg-color);
+  box-shadow: 
+    inset 2px 2px 5px var(--dark-neu-shadow-dark),
+    inset -2px -2px 5px var(--dark-neu-shadow-light);
+}
+
+body.dark-mode input[type="range"]::-webkit-slider-thumb {
+  box-shadow: 
+    2px 2px 5px var(--dark-neu-shadow-dark),
+    -2px -2px 5px var(--dark-neu-shadow-light);
+}
+
+body.dark-mode input[type="range"]::-moz-range-thumb {
+  box-shadow: 
+    2px 2px 5px var(--dark-neu-shadow-dark),
+    -2px -2px 5px var(--dark-neu-shadow-light);
+}
+
+/* Neumorphic Checkboxes */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--bg-color);
+  box-shadow: 
+    inset 2px 2px 5px var(--neu-shadow-dark),
+    inset -2px -2px 5px var(--neu-shadow-light);
+  position: relative;
+  cursor: pointer;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--accent-color);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  color: white;
+  font-size: 14px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+body.dark-mode input[type="checkbox"] {
+  background: var(--dark-bg-color);
+  box-shadow: 
+    inset 2px 2px 5px var(--dark-neu-shadow-dark),
+    inset -2px -2px 5px var(--dark-neu-shadow-light);
+}
+
+/* Neumorphic File Upload Area */
+.file-upload-area {
+  background-color: var(--bg-color);
+  box-shadow: 
+    inset 2px 2px 5px var(--neu-shadow-dark),
+    inset -2px -2px 5px var(--neu-shadow-light);
+}
+
+body.dark-mode .file-upload-area {
+  background-color: var(--dark-bg-color);
+  box-shadow: 
+    inset 2px 2px 5px var(--dark-neu-shadow-dark),
+    inset -2px -2px 5px var(--dark-neu-shadow-light);
+}
+
+/* Neumorphic Tab Buttons */
+.tab-button {
+  background-color: var(--bg-color);
+  box-shadow: 
+    2px 2px 5px var(--neu-shadow-dark),
+    -2px -2px 5px var(--neu-shadow-light);
+}
+
+.tab-button.active {
+  box-shadow: 
+    inset 2px 2px 5px var(--neu-shadow-dark),
+    inset -2px -2px 5px var(--neu-shadow-light);
+}
+
+body.dark-mode .tab-button {
+  background-color: var(--dark-bg-color);
+  box-shadow: 
+    2px 2px 5px var(--dark-neu-shadow-dark),
+    -2px -2px 5px var(--dark-neu-shadow-light);
+}
+
+body.dark-mode .tab-button.active {
+  box-shadow: 
+    inset 2px 2px 5px var(--dark-neu-shadow-dark),
+    inset -2px -2px 5px var(--dark-neu-shadow-light);
+}
+
+/* Neumorphic Effect Chain Items */
+.effect-chain-item {
+  box-shadow: 
+    2px 2px 5px var(--neu-shadow-dark),
+    -2px -2px 5px var(--neu-shadow-light);
+}
+
+body.dark-mode .effect-chain-item {
+  box-shadow: 
+    2px 2px 5px var(--dark-neu-shadow-dark),
+    -2px -2px 5px var(--dark-neu-shadow-light);
+}
