@@ -4,6 +4,10 @@ node_modules/
 # Build output
 dist/
 
+# Ignore all .md files except README.md
+*.md
+!README.md
+
 # Environment variables
 .env
 .env.*
