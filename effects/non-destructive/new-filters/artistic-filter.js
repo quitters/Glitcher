@@ -25,7 +25,7 @@ export class ArtisticFilter {
       case 'oil_painting':
         return this.applyOilPaintingEffect(outputData, width, height, normalizedIntensity, options);
       case 'watercolor':
-        return this.applyWatercolorEffect(outputData, width, height, normalizedIntensity, options);
+        return this.applyWatercolorEffectOptimized(outputData, width, height, normalizedIntensity, options);
       case 'pencil_sketch':
         return this.applyPencilSketchEffect(outputData, width, height, normalizedIntensity, options);
       case 'mosaic':
@@ -470,20 +470,22 @@ export class ArtisticFilter {
    */
   static applyPointillismEffect(data, width, height, normalizedIntensity, options = {}) {
     const uiDotSize = Math.max(1, options.dotSize || 4);
-    const uiDensity = Math.max(0.1, Math.min(1, options.density || 0.6));
-    const uiColorVariation = options.colorVariation || 0.2;
+    // Use options.dotDensity (0-100) and normalize it to 0.0-1.0 for density calculation
+    const rawDotDensity = options.dotDensity === undefined ? 60 : options.dotDensity;
+    const uiDensity = Math.max(0.01, Math.min(1, rawDotDensity / 100)); // Ensure density is at least 0.01 to avoid division by zero or extreme spacing
+    const uiColorVariation = (options.colorVariation === undefined ? 40 : options.colorVariation) / 100; // Normalize 0-100 to 0.0-1.0
     const uiDotShape = options.dotShape || 'circle';
-    const uiBackgroundBrightness = options.backgroundBrightness || 0.95;
+    const uiBackgroundColorHex = options.backgroundColor || '#FFFFFF';
 
     const resultData = new Uint8ClampedArray(data.length);
     
-    // Create background
-    const bgValue = Math.floor(255 * uiBackgroundBrightness);
+    // Create background using backgroundColor
+    const bgRgb = ArtisticFilter.hexToRgb(uiBackgroundColorHex);
     for (let i = 0; i < resultData.length; i += 4) {
-      resultData[i] = bgValue;
-      resultData[i + 1] = bgValue;
-      resultData[i + 2] = bgValue;
-      resultData[i + 3] = data[i + 3];
+      resultData[i] = bgRgb[0];
+      resultData[i + 1] = bgRgb[1];
+      resultData[i + 2] = bgRgb[2];
+      resultData[i + 3] = data[i + 3]; // Preserve original alpha
     }
     
     // Calculate adaptive dot placement
@@ -677,91 +679,231 @@ export class ArtisticFilter {
     return new ImageData(resultData, width, height);
   }
 
-  static applyWatercolorEffect(data, width, height, normalizedIntensity, options = {}) {
-    const uiBleedAmount = options.bleedAmount || 0.5;
-    const uiPigmentDensity = options.pigmentDensity || 0.6;
-    const uiEdgeDarkening = options.edgeDarkening || 0.3;
-    const uiPaperTexture = options.paperTexture || 0.1;
+/**
+   * Optimized Watercolor Effect
+   * Uses separable blur and downsampling for better performance
+   */
+static applyWatercolorEffectOptimized(data, width, height, normalizedIntensity, options = {}) {
+  const uiBleedAmount = options.bleedAmount || 0.5;
+  const uiPigmentDensity = options.pigmentDensity || 0.6;
+  const uiEdgeDarkening = options.edgeDarkening || 0.3;
+  const uiPaperTexture = options.paperTexture || 0.1;
+  const uiWaterAmount = options.waterAmount || 0.5;
 
-    const effectResult = new Uint8ClampedArray(data.length);
-    const resultData = new Uint8ClampedArray(data);
+  const resultData = new Uint8ClampedArray(data);
+  
+  // Calculate blur radius based on bleed amount
+  const blurRadius = Math.min(15, Math.floor(3 + uiBleedAmount * 5));
+  
+  // For large images, use downsampling for blur calculation
+  const shouldDownsample = width * height > 800 * 800;
+  let processedData;
+  
+  if (shouldDownsample) {
+    // Downsample for blur calculation
+    const scale = 0.5;
+    const smallWidth = Math.ceil(width * scale);
+    const smallHeight = Math.ceil(height * scale);
     
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const idx = (y * width + x) * 4;
-        let rSum = 0, gSum = 0, bSum = 0, count = 0;
-        const blurRadius = Math.floor(3 + uiBleedAmount * 5);
-
-        for (let dy = -blurRadius; dy <= blurRadius; dy++) {
-          for (let dx = -blurRadius; dx <= blurRadius; dx++) {
-            const sy = y + dy;
-            const sx = x + dx;
-            if (sx >= 0 && sx < width && sy >= 0 && sy < height) {
-              const sIdx = (sy * width + sx) * 4;
-              rSum += data[sIdx];
-              gSum += data[sIdx + 1];
-              bSum += data[sIdx + 2];
-              count++;
-            }
-          }
-        }
-
-        let effectR = rSum / count;
-        let effectG = gSum / count;
-        let effectB = bSum / count;
-
-        const avgLum = (effectR + effectG + effectB) / 3;
-        effectR = avgLum + (effectR - avgLum) * (1 + uiPigmentDensity);
-        effectG = avgLum + (effectG - avgLum) * (1 + uiPigmentDensity);
-        effectB = avgLum + (effectB - avgLum) * (1 + uiPigmentDensity);
-
-        if (uiEdgeDarkening > 0) {
-          let localSum = 0, localCount = 0;
-          for(let dy = -1; dy <= 1; dy++) {
-            for(let dx = -1; dx <=1; dx++) {
-              const ny = y + dy, nx = x + dx;
-              if (nx >=0 && nx < width && ny >=0 && ny < height) {
-                const nIdx = (ny*width + nx) * 4;
-                localSum += (data[nIdx] + data[nIdx+1] + data[nIdx+2]) / 3;
-                localCount++;
-              }
-            }
-          }
-          const localAvg = localSum / localCount;
-          const currentLum = (data[idx] + data[idx+1] + data[idx+2]) / 3;
-          if (Math.abs(currentLum - localAvg) > 10) {
-            effectR *= (1 - uiEdgeDarkening * 0.5);
-            effectG *= (1 - uiEdgeDarkening * 0.5);
-            effectB *= (1 - uiEdgeDarkening * 0.5);
-          }
-        }
-
-        if (uiPaperTexture > 0) {
-          const texVal = (Math.random() - 0.5) * 30 * uiPaperTexture;
-          effectR += texVal;
-          effectG += texVal;
-          effectB += texVal;
-        }
-
-        effectR = Math.max(0, Math.min(255, effectR));
-        effectG = Math.max(0, Math.min(255, effectG));
-        effectB = Math.max(0, Math.min(255, effectB));
-
-        effectResult[idx] = effectR;
-        effectResult[idx + 1] = effectG;
-        effectResult[idx + 2] = effectB;
-        effectResult[idx + 3] = data[idx + 3];
+    // Downsample
+    const smallData = new Uint8ClampedArray(smallWidth * smallHeight * 4);
+    for (let y = 0; y < smallHeight; y++) {
+      for (let x = 0; x < smallWidth; x++) {
+        const srcX = Math.floor(x / scale);
+        const srcY = Math.floor(y / scale);
+        const srcIdx = (srcY * width + srcX) * 4;
+        const dstIdx = (y * smallWidth + x) * 4;
+        
+        smallData[dstIdx] = data[srcIdx];
+        smallData[dstIdx + 1] = data[srcIdx + 1];
+        smallData[dstIdx + 2] = data[srcIdx + 2];
+        smallData[dstIdx + 3] = data[srcIdx + 3];
       }
     }
-
-    for (let i = 0; i < data.length; i += 4) {
-      resultData[i] = data[i] + (effectResult[i] - data[i]) * normalizedIntensity;
-      resultData[i + 1] = data[i + 1] + (effectResult[i + 1] - data[i + 1]) * normalizedIntensity;
-      resultData[i + 2] = data[i + 2] + (effectResult[i + 2] - data[i + 2]) * normalizedIntensity;
-      resultData[i + 3] = data[i + 3];
+    
+    // Apply blur to small image
+    const blurredSmall = this.separableBlur(smallData, smallWidth, smallHeight, Math.floor(blurRadius * scale));
+    
+    // Upsample blurred result
+    processedData = new Uint8ClampedArray(data.length);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const srcX = Math.min(smallWidth - 1, x * scale);
+        const srcY = Math.min(smallHeight - 1, y * scale);
+        const srcIdx = (Math.floor(srcY) * smallWidth + Math.floor(srcX)) * 4;
+        const dstIdx = (y * width + x) * 4;
+        
+        processedData[dstIdx] = blurredSmall[srcIdx];
+        processedData[dstIdx + 1] = blurredSmall[srcIdx + 1];
+        processedData[dstIdx + 2] = blurredSmall[srcIdx + 2];
+        processedData[dstIdx + 3] = blurredSmall[srcIdx + 3];
+      }
     }
+  } else {
+    // Apply blur directly for smaller images
+    processedData = this.separableBlur(data, width, height, blurRadius);
+  }
+  
+  // Apply watercolor effects
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      
+      let effectR = processedData[idx];
+      let effectG = processedData[idx + 1];
+      let effectB = processedData[idx + 2];
+      
+      // Enhance color saturation (pigment density)
+      const avgLum = (effectR + effectG + effectB) / 3;
+      effectR = avgLum + (effectR - avgLum) * (1 + uiPigmentDensity);
+      effectG = avgLum + (effectG - avgLum) * (1 + uiPigmentDensity);
+      effectB = avgLum + (effectB - avgLum) * (1 + uiPigmentDensity);
+      
+      // Edge darkening effect (wet-on-wet technique)
+      if (uiEdgeDarkening > 0 && y > 0 && y < height - 1 && x > 0 && x < width - 1) {
+        // Simplified edge detection
+        const centerLum = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+        let edgeSum = 0;
+        const checkOffsets = [
+          [-1, 0], [1, 0], [0, -1], [0, 1]
+        ];
+        
+        for (const [dx, dy] of checkOffsets) {
+          const nIdx = ((y + dy) * width + (x + dx)) * 4;
+          const nLum = (data[nIdx] + data[nIdx + 1] + data[nIdx + 2]) / 3;
+          edgeSum += Math.abs(centerLum - nLum);
+        }
+        
+        if (edgeSum > 40) {
+          const darkening = 1 - uiEdgeDarkening * 0.3;
+          effectR *= darkening;
+          effectG *= darkening;
+          effectB *= darkening;
+        }
+      }
+      
+      // Water pooling effect
+      if (uiWaterAmount > 0) {
+        // Simulate water pooling in darker areas
+        const darkness = 1 - (effectR + effectG + effectB) / (3 * 255);
+        if (darkness > 0.3) {
+          const pooling = 1 + darkness * uiWaterAmount * 0.2;
+          effectR *= pooling;
+          effectG *= pooling;
+          effectB *= pooling;
+        }
+      }
+      
+      // Paper texture
+      if (uiPaperTexture > 0) {
+        // Use a simple hash function for consistent texture
+        const hash = ((x * 73856093) ^ (y * 19349663)) % 1000000;
+        const texVal = ((hash / 1000000) - 0.5) * 30 * uiPaperTexture;
+        effectR += texVal;
+        effectG += texVal;
+        effectB += texVal;
+      }
+      
+      // Clamp values
+      effectR = Math.max(0, Math.min(255, effectR));
+      effectG = Math.max(0, Math.min(255, effectG));
+      effectB = Math.max(0, Math.min(255, effectB));
+      
+      // Blend with original
+      resultData[idx] = data[idx] + (effectR - data[idx]) * normalizedIntensity;
+      resultData[idx + 1] = data[idx + 1] + (effectG - data[idx + 1]) * normalizedIntensity;
+      resultData[idx + 2] = data[idx + 2] + (effectB - data[idx + 2]) * normalizedIntensity;
+    }
+  }
+  
+  return new ImageData(resultData, width, height);
+}
 
-    return new ImageData(resultData, width, height);
+/**
+ * Efficient separable blur implementation
+ * Much faster than traditional 2D convolution
+ */
+static separableBlur(data, width, height, radius) {
+  const output = new Uint8ClampedArray(data);
+  const temp = new Uint8ClampedArray(data.length);
+  
+  // Create Gaussian kernel
+  const kernel = new Float32Array(radius * 2 + 1);
+  const sigma = radius / 3;
+  let sum = 0;
+  
+  for (let i = 0; i <= radius * 2; i++) {
+    const x = i - radius;
+    kernel[i] = Math.exp(-(x * x) / (2 * sigma * sigma));
+    sum += kernel[i];
+  }
+  
+  // Normalize kernel
+  for (let i = 0; i < kernel.length; i++) {
+    kernel[i] /= sum;
+  }
+  
+  // Horizontal pass
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let r = 0, g = 0, b = 0, a = 0;
+      
+      for (let k = -radius; k <= radius; k++) {
+        const px = Math.max(0, Math.min(width - 1, x + k));
+        const idx = (y * width + px) * 4;
+        const weight = kernel[k + radius];
+        
+        r += data[idx] * weight;
+        g += data[idx + 1] * weight;
+        b += data[idx + 2] * weight;
+        a += data[idx + 3] * weight;
+      }
+      
+      const idx = (y * width + x) * 4;
+      temp[idx] = r;
+      temp[idx + 1] = g;
+      temp[idx + 2] = b;
+      temp[idx + 3] = a;
+    }
+  }
+  
+  // Vertical pass
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let r = 0, g = 0, b = 0, a = 0;
+      
+      for (let k = -radius; k <= radius; k++) {
+        const py = Math.max(0, Math.min(height - 1, y + k));
+        const idx = (py * width + x) * 4;
+        const weight = kernel[k + radius];
+        
+        r += temp[idx] * weight;
+        g += temp[idx + 1] * weight;
+        b += temp[idx + 2] * weight;
+        a += temp[idx + 3] * weight;
+      }
+      
+      const idx = (y * width + x) * 4;
+      output[idx] = r;
+      output[idx + 1] = g;
+      output[idx + 2] = b;
+      output[idx + 3] = a;
+    }
+  }
+  
+  return output;
+}
+
+  static hexToRgb(hex) {
+    if (!hex || typeof hex !== 'string') return [0, 0, 0]; // Default to black if invalid
+    const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+    hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [
+      parseInt(result[1], 16),
+      parseInt(result[2], 16),
+      parseInt(result[3], 16)
+    ] : [0, 0, 0]; // Default to black if parsing fails
   }
 
   static applyPencilSketchEffect(data, width, height, normalizedIntensity, options = {}) {
@@ -830,8 +972,10 @@ export class ArtisticFilter {
   static applyMosaicEffect(data, width, height, normalizedIntensity, options = {}) {
     const uiTileSize = options.tileSize || 10;
     const uiGroutThickness = options.groutThickness || 1;
-    const uiColorVariation = options.colorVariation || 0.1;
-    const uiGroutColor = options.groutColor || [0, 0, 0];
+    // Normalize colorVariation from 0-100 range to 0.0-1.0 range
+    const uiColorVariation = (typeof options.colorVariation === 'number' ? options.colorVariation / 100 : 0.1);
+    // Parse groutColor from hex string to RGB array
+    const parsedGroutColor = options.groutColor ? ArtisticFilter.hexToRgb(options.groutColor) : [0, 0, 0];
 
     const effectResult = new Uint8ClampedArray(data.length);
     const resultData = new Uint8ClampedArray(data);
@@ -873,9 +1017,9 @@ export class ArtisticFilter {
               const targetIdx = (targetY * width + targetX) * 4;
               if (dy < uiGroutThickness || dy >= uiTileSize - uiGroutThickness || 
                   dx < uiGroutThickness || dx >= uiTileSize - uiGroutThickness) {
-                effectResult[targetIdx] = uiGroutColor[0];
-                effectResult[targetIdx + 1] = uiGroutColor[1];
-                effectResult[targetIdx + 2] = uiGroutColor[2];
+                effectResult[targetIdx] = parsedGroutColor[0];
+                effectResult[targetIdx + 1] = parsedGroutColor[1];
+                effectResult[targetIdx + 2] = parsedGroutColor[2];
               } else {
                 effectResult[targetIdx] = tileR;
                 effectResult[targetIdx + 1] = tileG;

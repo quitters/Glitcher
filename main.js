@@ -18,7 +18,6 @@ import { EFFECT_DEFAULTS } from './config/constants.js';
 import { EffectPresets } from './ui/effect-presets.js';
 import { PanelStateManager } from './ui/panel-state-manager.js';
 import { ArtisticFilter } from './effects/non-destructive/new-filters/artistic-filter.js'; // Added for artistic filter integration
-import { filterControlsUI } from './ui/filter-controls-ui.js';
 import { FilterControlsUI } from './ui/filter-controls-ui.js';
 import { RecordingManager } from './core/recording-manager.js';
 
@@ -39,6 +38,7 @@ class GlitcherApp {
     this.frameCount = 0;
     this.lastFrameTime = 0;
     this.targetFrameRate = 60;
+    this.isRecording = false; // Added for recording state
     
     // Destructive effects state
     this.activeClumps = [];
@@ -56,7 +56,7 @@ class GlitcherApp {
     // NEW: Non-destructive filter effects state
     this.filterEffect = 'off';
     this.filterIntensity = 50;
-    this.filterControlsUI = filterControlsUI; // Use singleton instance
+    this.filterControlsUI = new FilterControlsUI(); // Properly instantiate FilterControlsUI
     this.filterOptions = {
       // Main style selectors
       artisticStyle: 'oil_painting',
@@ -125,7 +125,6 @@ class GlitcherApp {
           groutThickness: 2,
           groutColor: '#CCCCCC',
           colorVariation: 30,
-          tileShape: 'square',
         },
         stained_glass: {
           cellSize: 50,
@@ -162,60 +161,59 @@ class GlitcherApp {
     // Configuration for Artistic Filter UI controls
     this.artisticParamsConfig = {
       oil_painting: {
-        brushSize: { type: 'slider', min: 1, max: 20, step: 1, unit: 'px' },
-        smudgeDetail: { type: 'slider', min: 0, max: 100, step: 1 },
-        colorPaletteRichness: { type: 'slider', min: 0, max: 100, step: 1 }
+        brushSize: { type: 'slider', min: 1, max: 20, step: 1, unit: 'px', default: 5 },
+        smudgeDetail: { type: 'slider', min: 0, max: 100, step: 1, default: 50 },
+        colorPaletteRichness: { type: 'slider', min: 0, max: 100, step: 1, default: 70 }
       },
       watercolor: {
-        bleedAmount: { type: 'slider', min: 0, max: 100, step: 1 },
-        pigmentDensity: { type: 'slider', min: 0, max: 100, step: 1 },
-        edgeDarkening: { type: 'slider', min: 0, max: 100, step: 1 },
-        paperTextureStrength: { type: 'slider', min: 0, max: 100, step: 1 },
-        waterAmount: { type: 'slider', min: 0, max: 100, step: 1 }
+        bleedAmount: { type: 'slider', min: 0, max: 100, step: 1, default: 30 },
+        pigmentDensity: { type: 'slider', min: 0, max: 100, step: 1, default: 60 },
+        edgeDarkening: { type: 'slider', min: 0, max: 100, step: 1, default: 40 },
+        paperTextureStrength: { type: 'slider', min: 0, max: 100, step: 1, default: 20 },
+        waterAmount: { type: 'slider', min: 0, max: 100, step: 1, default: 50 }
       },
       pencil_sketch: {
-        strokeWidth: { type: 'slider', min: 1, max: 10, step: 0.5, unit: 'px' },
-        hatchDensity: { type: 'slider', min: 0, max: 100, step: 1 },
-        edgeThreshold: { type: 'slider', min: 0, max: 100, step: 1 },
-        graphiteShadingIntensity: { type: 'slider', min: 0, max: 100, step: 1 },
-        paperColor: { type: 'color' },
-        pencilColor: { type: 'color' }
+        strokeWidth: { type: 'slider', min: 1, max: 10, step: 0.5, unit: 'px', default: 2 },
+        hatchDensity: { type: 'slider', min: 0, max: 100, step: 1, default: 50 },
+        edgeThreshold: { type: 'slider', min: 0, max: 100, step: 1, default: 20 },
+        graphiteShadingIntensity: { type: 'slider', min: 0, max: 100, step: 1, default: 60 },
+        paperColor: { type: 'color', default: '#FFFFFF' },
+        pencilColor: { type: 'color', default: '#333333' }
       },
       mosaic: {
-        tileSize: { type: 'slider', min: 5, max: 50, step: 1, unit: 'px' },
-        groutThickness: { type: 'slider', min: 0, max: 10, step: 1, unit: 'px' },
-        groutColor: { type: 'color' },
-        colorVariation: { type: 'slider', min: 0, max: 100, step: 1 },
-        tileShape: { type: 'dropdown', options: ['square', 'hexagon', 'circle'] }
+        tileSize: { type: 'slider', min: 5, max: 50, step: 1, unit: 'px', default: 20 },
+        groutThickness: { type: 'slider', min: 0, max: 10, step: 1, unit: 'px', default: 2 },
+        groutColor: { type: 'color', default: '#CCCCCC' },
+        colorVariation: { type: 'slider', min: 0, max: 100, step: 1, default: 30 }
       },
       stained_glass: {
-        cellSize: { type: 'slider', min: 10, max: 100, step: 1, unit: 'px' },
-        borderThickness: { type: 'slider', min: 1, max: 10, step: 1, unit: 'px' },
-        borderColor: { type: 'color' },
-        lightRefractionIndex: { type: 'slider', min: 0, max: 100, step: 1 },
-        colorPaletteComplexity: { type: 'slider', min: 0, max: 100, step: 1 }
+        cellSize: { type: 'slider', min: 10, max: 100, step: 1, unit: 'px', default: 50 },
+        borderThickness: { type: 'slider', min: 1, max: 10, step: 1, unit: 'px', default: 3 },
+        borderColor: { type: 'color', default: '#000000' },
+        lightRefractionIndex: { type: 'slider', min: 0, max: 100, step: 1, default: 20 },
+        colorPaletteComplexity: { type: 'slider', min: 0, max: 100, step: 1, default: 60 }
       },
       comic_book: {
-        inkOutlineStrength: { type: 'slider', min: 0, max: 10, step: 0.5 },
-        colorLevels: { type: 'slider', min: 2, max: 16, step: 1 },
-        halftoneDotSize: { type: 'slider', min: 1, max: 20, step: 1, unit: 'px' },
-        halftoneAngle: { type: 'slider', min: 0, max: 360, step: 1, unit: '°' },
-        edgeDetectionThreshold: { type: 'slider', min: 0, max: 100, step: 1 }
+        inkOutlineStrength: { type: 'slider', min: 0, max: 10, step: 0.5, default: 5 },
+        colorLevels: { type: 'slider', min: 2, max: 16, step: 1, default: 4 },
+        halftoneDotSize: { type: 'slider', min: 1, max: 20, step: 1, unit: 'px', default: 3 },
+        halftoneAngle: { type: 'slider', min: 0, max: 360, step: 1, unit: '°', default: 45 },
+        edgeDetectionThreshold: { type: 'slider', min: 0, max: 100, step: 1, default: 30 }
       },
       crosshatch: {
-        lineSpacing: { type: 'slider', min: 1, max: 20, step: 1, unit: 'px' },
-        lineThickness: { type: 'slider', min: 1, max: 10, step: 0.5, unit: 'px' },
-        angleVariation: { type: 'slider', min: 0, max: 90, step: 1, unit: '°' },
-        hatchDarkness: { type: 'slider', min: 0, max: 100, step: 1 },
-        backgroundColor: { type: 'color' },
-        numLayers: { type: 'slider', min: 1, max: 5, step: 1 }
+        lineSpacing: { type: 'slider', min: 1, max: 20, step: 1, unit: 'px', default: 8 },
+        lineThickness: { type: 'slider', min: 1, max: 10, step: 0.5, unit: 'px', default: 1 },
+        angleVariation: { type: 'slider', min: 0, max: 90, step: 1, unit: '°', default: 15 },
+        hatchDarkness: { type: 'slider', min: 0, max: 100, step: 1, default: 70 },
+        backgroundColor: { type: 'color', default: '#FFFFFF' },
+        numLayers: { type: 'slider', min: 1, max: 5, step: 1, default: 3 }
       },
       pointillism: {
-        dotSize: { type: 'slider', min: 1, max: 20, step: 1, unit: 'px' },
-        dotDensity: { type: 'slider', min: 0, max: 100, step: 1 },
-        colorVariation: { type: 'slider', min: 0, max: 100, step: 1 },
-        dotShape: { type: 'dropdown', options: ['circle', 'square', 'diamond'] },
-        backgroundColor: { type: 'color' }
+        dotSize: { type: 'slider', min: 1, max: 20, step: 1, unit: 'px', default: 4 },
+        dotDensity: { type: 'slider', min: 0, max: 100, step: 1, default: 60 },
+        colorVariation: { type: 'slider', min: 0, max: 100, step: 1, default: 40 },
+        dotShape: { type: 'dropdown', options: ['circle', 'square', 'diamond'], default: 'circle' },
+        backgroundColor: { type: 'color', default: '#FFFFFF' }
       }
     };
 
@@ -473,18 +471,17 @@ class GlitcherApp {
         const selectedValue = e.target.value;
         this.filterEffect = selectedValue;
         
+        // Show the appropriate filter controls
+        this.showFilterControls(selectedValue);
+        
         // Parse the filter type and style
         if (selectedValue.startsWith('artistic-')) {
           // Extract the style from compound value
           const style = selectedValue.replace('artistic-', '');
           this.filterOptions.artisticStyle = style;
           
-          // Update the style-specific UI
-          this.updateArtisticStyleSpecificUI(style);
+          // Update the style-specific UI will be called from showFilterControls
         }
-        
-        // Show the appropriate filter controls
-        this.showFilterControls(selectedValue);
       });
     }
     
@@ -500,6 +497,7 @@ class GlitcherApp {
     
     // Enhanced Halftone Controls
     this.setupHalftoneControls();
+    this.setupHalftoneHTMLControls();
     
     // Enhanced Motion Blur Controls
     this.setupMotionBlurControls();
@@ -512,6 +510,57 @@ class GlitcherApp {
 
     // NEW: Artistic filter controls
     this.setupArtisticControls();
+  }
+  
+  /**
+   * Setup HTML halftone controls that are in the HTML
+   */
+  setupHalftoneHTMLControls() {
+    // Pattern control
+    const patternSelect = document.getElementById('halftone-pattern');
+    if (patternSelect) {
+      patternSelect.addEventListener('change', (e) => {
+        this.filterOptions.halftone.pattern = e.target.value;
+      });
+    }
+    
+    // Dot size control
+    const dotSizeRange = document.getElementById('halftone-dot-size');
+    if (dotSizeRange) {
+      dotSizeRange.addEventListener('input', (e) => {
+        this.filterOptions.halftone.dotSize = parseInt(e.target.value);
+        const dotSizeValue = document.getElementById('halftone-dot-size-value');
+        if (dotSizeValue) dotSizeValue.textContent = e.target.value + 'px';
+      });
+    }
+    
+    // Angle control
+    const angleRange = document.getElementById('halftone-angle');
+    if (angleRange) {
+      angleRange.addEventListener('input', (e) => {
+        this.filterOptions.halftone.angle = parseInt(e.target.value);
+        const angleValue = document.getElementById('halftone-angle-value');
+        if (angleValue) angleValue.textContent = e.target.value + '°';
+      });
+    }
+    
+    // Threshold control
+    const thresholdRange = document.getElementById('halftone-threshold');
+    if (thresholdRange) {
+      thresholdRange.addEventListener('input', (e) => {
+        this.filterOptions.halftone.threshold = parseInt(e.target.value);
+        const thresholdValue = document.getElementById('halftone-threshold-value');
+        if (thresholdValue) thresholdValue.textContent = e.target.value;
+      });
+    }
+    
+    // Color mode control
+    const colorModeSelect = document.getElementById('halftone-color-mode');
+    if (colorModeSelect) {
+      colorModeSelect.addEventListener('change', (e) => {
+        this.filterOptions.halftone.colorMode = e.target.value;
+      });
+    }
   }
   
   /**
@@ -546,6 +595,9 @@ class GlitcherApp {
 
       if (controlElement) {
         container.appendChild(controlElement);
+        console.log('✅ Added control for:', paramKey);
+      } else {
+        console.error('❌ Failed to create control for:', paramKey);
       }
     }
   }
@@ -673,6 +725,43 @@ class GlitcherApp {
         container.appendChild(controlElement);
       }
     }
+    
+    // Add mouse position tracking for liquify center
+    this.setupLiquifyMouseTracking();
+  }
+  
+  /**
+   * Setup mouse tracking for liquify effect center position
+   */
+  setupLiquifyMouseTracking() {
+    const canvas = this.canvasManager.canvas;
+    if (!canvas) return;
+    
+    let isTracking = false;
+    
+    // Add click-to-set center functionality
+    canvas.addEventListener('click', (e) => {
+      if (this.filterEffect === 'liquify') {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Update liquify center position
+        this.filterOptions.liquify.centerX = x;
+        this.filterOptions.liquify.centerY = y;
+        
+        console.log(`🎯 Liquify center set to: (${x.toFixed(0)}, ${y.toFixed(0)})`);
+      }
+    });
+    
+    // Add visual feedback on hover
+    canvas.addEventListener('mousemove', (e) => {
+      if (this.filterEffect === 'liquify') {
+        canvas.style.cursor = 'crosshair';
+      } else {
+        canvas.style.cursor = 'default';
+      }
+    });
   }
   
   /**
@@ -683,9 +772,12 @@ class GlitcherApp {
     const temperatureRange = document.getElementById('color-grading-temperature');
     if (temperatureRange) {
       temperatureRange.addEventListener('input', (e) => {
-        this.filterOptions.temperature = parseInt(e.target.value);
+        const value = parseInt(e.target.value);
+        // Store in both places for compatibility
+        this.filterOptions.temperature = value;
+        this.filterOptions.colorGrading.temperature = value;
         const temperatureValue = document.getElementById('color-grading-temperature-value');
-        if (temperatureValue) temperatureValue.textContent = this.filterOptions.temperature;
+        if (temperatureValue) temperatureValue.textContent = value;
       });
     }
     
@@ -693,9 +785,12 @@ class GlitcherApp {
     const tintRange = document.getElementById('color-grading-tint');
     if (tintRange) {
       tintRange.addEventListener('input', (e) => {
-        this.filterOptions.tint = parseInt(e.target.value);
+        const value = parseInt(e.target.value);
+        // Store in both places for compatibility
+        this.filterOptions.tint = value;
+        this.filterOptions.colorGrading.tint = value;
         const tintValue = document.getElementById('color-grading-tint-value');
-        if (tintValue) tintValue.textContent = this.filterOptions.tint;
+        if (tintValue) tintValue.textContent = value;
       });
     }
     
@@ -703,9 +798,12 @@ class GlitcherApp {
     const vibranceRange = document.getElementById('color-grading-vibrance');
     if (vibranceRange) {
       vibranceRange.addEventListener('input', (e) => {
-        this.filterOptions.vibrance = parseInt(e.target.value);
+        const value = parseInt(e.target.value);
+        // Store in both places for compatibility
+        this.filterOptions.vibrance = value;
+        this.filterOptions.colorGrading.vibrance = value;
         const vibranceValue = document.getElementById('color-grading-vibrance-value');
-        if (vibranceValue) vibranceValue.textContent = this.filterOptions.vibrance;
+        if (vibranceValue) vibranceValue.textContent = value;
       });
     }
     
@@ -713,9 +811,12 @@ class GlitcherApp {
     const saturationRange = document.getElementById('color-grading-saturation');
     if (saturationRange) {
       saturationRange.addEventListener('input', (e) => {
-        this.filterOptions.saturation = parseInt(e.target.value);
+        const value = parseInt(e.target.value);
+        // Store in both places for compatibility
+        this.filterOptions.saturation = value;
+        this.filterOptions.colorGrading.saturation = value;
         const saturationValue = document.getElementById('color-grading-saturation-value');
-        if (saturationValue) saturationValue.textContent = this.filterOptions.saturation;
+        if (saturationValue) saturationValue.textContent = value;
       });
     }
   }
@@ -789,6 +890,8 @@ class GlitcherApp {
    * Handle filter control changes from dynamic UI
    */
   handleFilterControlChange(filterType, controlId, value) {
+    console.log(`🎛️ Filter control change: ${filterType} - ${controlId} = ${value}`);
+    
     // Map the control values to filter options
     const paramMap = {
       // Emboss
@@ -917,7 +1020,7 @@ class GlitcherApp {
     });
     
     // Parse filter type to get base filter
-    const [baseFilter] = filterType.includes('-') ? 
+    const [baseFilter, subType] = filterType.includes('-') ? 
       filterType.split('-', 2) : [filterType, null];
     
     // Show relevant controls based on filter type
@@ -984,6 +1087,13 @@ class GlitcherApp {
         if (artisticControls) {
           artisticControls.style.display = 'block';
           console.log('  ✅ Showing artistic-controls');
+          console.log('  🎨 Filter type:', filterType, 'Base:', baseFilter, 'SubType:', subType);
+          // Update the artistic style-specific controls
+          if (subType) {
+            this.updateArtisticStyleSpecificUI(subType);
+          } else {
+            console.warn('  ⚠️ No subType found for artistic filter');
+          }
         }
         break;
         
@@ -1078,16 +1188,29 @@ class GlitcherApp {
    * @param {string} styleName - The name of the selected artistic style (e.g., 'oil_painting').
    */
   updateArtisticStyleSpecificUI(styleName) {
+    console.log('🎨 updateArtisticStyleSpecificUI called with style:', styleName);
     const container = document.getElementById('artistic-style-controls-container');
-    if (!container) return;
+    if (!container) {
+      console.error('❌ artistic-style-controls-container not found!');
+      return;
+    }
 
     // Clear previous controls
     container.innerHTML = '';
 
     const paramConfigs = this.artisticParamsConfig[styleName];
-    if (!paramConfigs) return;
+    if (!paramConfigs) {
+      console.error('❌ No config found for artistic style:', styleName);
+      console.log('Available styles:', Object.keys(this.artisticParamsConfig));
+      return;
+    }
 
+    // Ensure the artistic params object exists for this style
+    if (!this.filterOptions.artisticParams[styleName]) {
+      this.filterOptions.artisticParams[styleName] = {};
+    }
     const targetOptionsObject = this.filterOptions.artisticParams[styleName];
+    console.log('🎯 Creating controls for', Object.keys(paramConfigs).length, 'parameters');
 
     for (const paramKey in paramConfigs) {
       const config = paramConfigs[paramKey];
@@ -1116,7 +1239,7 @@ class GlitcherApp {
   // --- UI Helper Functions for Dynamic Controls ---
 
   _createSliderControl(labelText, paramKey, config, targetOptionsObject) {
-    const currentValue = targetOptionsObject[paramKey];
+    const currentValue = targetOptionsObject[paramKey] !== undefined ? targetOptionsObject[paramKey] : config.default || config.min;
 
     const controlRow = document.createElement('div');
     controlRow.className = 'control-row';
@@ -1160,7 +1283,7 @@ class GlitcherApp {
   }
 
   _createColorPickerControl(labelText, paramKey, config, targetOptionsObject) {
-    const currentValue = targetOptionsObject[paramKey];
+    const currentValue = targetOptionsObject[paramKey] || config.default || '#000000';
 
     const controlRow = document.createElement('div');
     controlRow.className = 'control-row';
@@ -1189,7 +1312,7 @@ class GlitcherApp {
   }
 
   _createDropdownControl(labelText, paramKey, config, targetOptionsObject) {
-    const currentValue = targetOptionsObject[paramKey];
+    const currentValue = targetOptionsObject[paramKey] || config.default || (config.options[0] && (typeof config.options[0] === 'object' ? config.options[0].value : config.options[0]));
 
     const controlRow = document.createElement('div');
     controlRow.className = 'control-row';
@@ -1291,7 +1414,9 @@ class GlitcherApp {
     }
     this.lastFrameTime = currentTime;
 
-    if (this.isPaused) {
+    // If paused AND not recording, then skip frame processing and just request next frame.
+    // If recording, we must continue processing frames even if paused.
+    if (this.isPaused && !this.isRecording) {
       this.animationId = requestAnimationFrame((time) => this.animate(time));
       return;
     }
@@ -1372,9 +1497,21 @@ class GlitcherApp {
     // NEW: Apply non-destructive filter effects as final pass
     let finalImageData = this.canvasManager.glitchImageData;
     if (this.filterEffect !== 'off') {
-      // Set the appropriate style option based on filter type
-      let currentOptions = { ...this.filterOptions };
+      // Create a properly structured options object
+      let currentOptions = {};
       
+      // Copy all filter options (for filters that look for flat parameters)
+      Object.assign(currentOptions, this.filterOptions);
+      
+      // Also ensure nested structures are included for filters that expect them
+      currentOptions.halftone = this.filterOptions.halftone;
+      currentOptions.motionBlur = this.filterOptions.motionBlur;
+      currentOptions.liquify = this.filterOptions.liquify;
+      currentOptions.colorGrading = this.filterOptions.colorGrading;
+      currentOptions.noise = this.filterOptions.noise;
+      currentOptions.artisticParams = this.filterOptions.artisticParams;
+      
+      // Set the appropriate style option based on filter type
       switch (this.filterEffect) {
         case 'cyberpunk':
           currentOptions.style = this.filterOptions.cyberpunkStyle;
@@ -1542,9 +1679,6 @@ if (document.readyState === 'loading') {
   app.init();
 }
 
-// Expose showFilterControls for presets and panel state restoration
-app.showFilterControls = app.showFilterControls.bind(app);
-
 // Expose debug function globally
 window.getGlitcherDebugInfo = () => {
   return {
@@ -1570,3 +1704,6 @@ window.getGlitcherDebugInfo = () => {
     }
   };
 };
+
+// Expose showFilterControls for presets and panel state restoration
+app.showFilterControls = app.showFilterControls.bind(app);

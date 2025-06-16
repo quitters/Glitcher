@@ -59,6 +59,36 @@ export const FILTER_CONTROLS = {
     ]
   },
 
+  'liquify': {
+    controls: [
+      {
+        type: 'select',
+        id: 'warpType',
+        label: 'Warp Type',
+        default: 'push',
+        options: [
+          { value: 'push',  label: 'Push' },
+          { value: 'pull',  label: 'Pull' },
+          { value: 'twirl', label: 'Twirl' },
+          { value: 'bloat', label: 'Bloat' },
+          { value: 'pinch', label: 'Pinch' }
+        ]
+      },
+      {
+        type: 'slider',
+        id: 'coveragePercent', // Matches the key in filterOptions.liquify
+        label: 'Coverage',     // Label for the UI
+        min: 25, max: 150, default: 100, unit: '%'
+      },
+      {
+        type: 'slider',
+        id: 'strength',        // Matches the key in filterOptions.liquify
+        label: 'Strength',       // Label for the UI
+        min: 0, max: 100, default: 50, unit: '%'
+      }
+    ]
+  },
+
   // Cyberpunk Filters
   'cyberpunk-neon': {
     controls: [
@@ -128,8 +158,8 @@ export const FILTER_CONTROLS = {
     controls: [
       { type: 'slider', id: 'tile-size', label: 'Tile Size', min: 5, max: 30, default: 10 },
       { type: 'slider', id: 'grout-thickness', label: 'Grout Thickness', min: 0, max: 3, default: 1 },
-      { type: 'slider', id: 'mosaic-color-variation', label: 'Color Variation', min: 0, max: 0.5, step: 0.05, default: 0.1 },
-      { type: 'color', id: 'grout-color', label: 'Grout Color', default: '#000000' }
+      { type: 'slider', id: 'colorVariation', label: 'Color Variation', min: 0, max: 100, step: 1, default: 30 },
+      { type: 'color', id: 'groutColor', label: 'Grout Color', default: '#CCCCCC' }
     ]
   },
   

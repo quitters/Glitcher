@@ -990,26 +990,21 @@
             
             <!-- Liquify Controls -->
             <div id="liquify-controls" class="filter-controls" style="display: none;">
-              <div class="control-row">
-                <label>Warp Type:</label>
-                <select id="liquify-warp-type" class="control-select">
-                  <option value="push">Push</option>
-                  <option value="pull">Pull</option>
-                  <option value="twirl">Twirl</option>
-                  <option value="bloat">Bloat</option>
-                  <option value="pinch">Pinch</option>
-                </select>
-              </div>
-              
-              <div class="control-row">
-                <label>Coverage: <span id="liquify-radius-value">100%</span></label>
-                <input type="range" id="liquify-radius" class="control-slider" min="25" max="150" value="100">
-                <div class="text-small">25% = Small Area, 100% = Whole Canvas, 150% = Extended</div>
-              </div>
-              
-              <div class="control-row">
-                <label>Strength: <span id="liquify-strength-value">50</span>%</label>
-                <input type="range" id="liquify-strength" class="control-slider" min="0" max="100" value="50">
+              <!-- Container for dynamically generated liquify controls -->
+              <div id="liquify-controls-container">
+                <!-- Static controls are commented out below, JS will populate this container -->
+                <!-- 
+                <div class="control-row">
+                  <label>Coverage: <span id="liquify-radius-value">100%</span></label>
+                  <input type="range" id="liquify-radius" class="control-slider" min="25" max="150" value="100">
+                  <div class="text-small">25% = Small Area, 100% = Whole Canvas, 150% = Extended</div>
+                </div>
+                
+                <div class="control-row">
+                  <label>Strength: <span id="liquify-strength-value">50</span>%</label>
+                  <input type="range" id="liquify-strength" class="control-slider" min="0" max="100" value="50">
+                </div>
+                -->
               </div>
             </div>
     
@@ -1115,10 +1110,21 @@
         <div class="group-title">🎬 Recording</div>
         <div class="slider-container">
           <div class="slider-label">
-            <span>⏱️ Duration (seconds)</span>
-            <span id="record-value" class="slider-value">5</span>
+            <span>🖼️ Number of Frames</span>
+            <span id="record-frames-value" class="slider-value">150</span>
           </div>
-          <input type="range" id="record-range" class="control-slider" min="1" max="20" step="1" value="5">
+          <input type="range" id="record-frames-range" class="control-slider" min="30" max="600" step="15" value="150">
+        </div>
+        <div class="select-container" style="margin-top: 10px;">
+          <div class="select-label" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>🎯 Target FPS</span>
+          </div>
+          <select id="record-fps-select" class="control-select" style="width: 100%;">
+            <option value="15">15 FPS</option>
+            <option value="24">24 FPS</option>
+            <option value="30" selected>30 FPS</option>
+            <option value="60">60 FPS</option>
+          </select>
         </div>
         <div class="checkbox-container">
           <input type="checkbox" id="reverse-checkbox" class="control-checkbox">

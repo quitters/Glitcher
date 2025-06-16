@@ -29,7 +29,8 @@ GlitcherApp_refactored/
 ├── config/
 │   └── constants.js              # Effect defaults and configuration
 ├── core/
-│   └── canvas-manager.js         # Canvas operations and image handling
+│   ├── canvas-manager.js         # Canvas operations and image handling
+│   └── recording-manager.js      # Video recording management
 ├── selection/
 │   ├── selection-manager.js      # Selection state and operations
 │   └── selection-engine.js       # Intelligent selection algorithms
@@ -66,6 +67,13 @@ GlitcherApp_refactored/
 - Original/working image data management
 - Canvas rendering and reset operations
 - Coordinate transformations
+
+#### **RecordingManager (core/recording-manager.js)**
+- Manages video recording functionality using the browser's `MediaRecorder` API.
+- Captures the main canvas stream for video output.
+- Implements frame-based recording, allowing users to specify the exact number of frames to capture.
+- Provides options for selecting the output video's Frames Per Second (FPS), including 15, 24, 30, and 60 FPS.
+- Generates downloadable video files (typically `.webm`) with filenames indicating frame count and FPS.
 
 #### **SelectionManager (selection/selection-manager.js)**
 - Selection mask management (Uint8Array)
@@ -149,6 +157,20 @@ Interactive selection tools for precise control:
 - **Effect Clumps**: Selections converted to rectangular regions for effect application
 - **Lifetime Management**: Each selection has configurable duration (1-300 frames)
 - **History System**: Last 10 selections stored for replay/undo
+
+---
+
+## 🎬 Recording Features
+
+The application now supports video recording with the following features:
+
+- **Frame-Based Recording**: Instead of recording for a set duration, users can specify the exact number of frames to capture (e.g., 30 to 600 frames).
+- **Selectable Output FPS**: Users can choose the desired frames per second for the output video, with options for 15, 24, 30 (default), and 60 FPS.
+- **Canvas Stream Capture**: Utilizes the browser's `MediaRecorder` API to capture the main canvas content.
+- **UI Integration**: New controls in the panel allow easy configuration of frame count and target FPS.
+- **Filename Convention**: Downloaded videos include frame count and FPS in their filenames (e.g., `glitch_art_150frames_30fps.webm`).
+
+**Note**: While functional, there can be inconsistencies with output video frame rates, which may result in perceived lag in the exported video. This is often dependent on browser performance and system capabilities. Further optimization may be required for perfectly smooth exports across all environments.
 
 ---
 
@@ -239,7 +261,8 @@ Applied as final pass, preserving original destructive effects:
 5. **Filter Effects**: Non-destructive filter pipeline
 6. **Destructive Effects**: Individual effect controls
 7. **Playback Controls**: Play/pause/reset
-8. **Development Status**: Feature implementation tracking
+8. **Recording Controls**: Frame count and FPS selection for video export
+9. **Development Status**: Feature implementation tracking
 
 ### **Selection Interface**
 - **Manual Mode Toggle**: Switch between automatic and manual selection
@@ -304,6 +327,7 @@ EffectModule.applyEffect(imageData, clump, params, selectionMask);
 4. Add filter effects as desired
 5. Adjust effect duration and intensity
 6. Play/pause to control animation
+7. Record video with frame count and FPS selection
 
 ### **Advanced Techniques**
 - **Layered Effects**: Combine multiple destructive effects
@@ -364,7 +388,7 @@ EffectModule.applyEffect(imageData, clump, params, selectionMask);
 ### **User Experience**
 - **Preset System**: Save/load effect combinations
 - **Batch Processing**: Process multiple images
-- **Export Options**: Video recording, high-resolution output
+- **Advanced Export Options**: Enhanced video recording (e.g., different codecs, resolutions, improved performance/stability), high-resolution image output
 - **Undo/Redo**: Full action history
 
 ### **Performance**

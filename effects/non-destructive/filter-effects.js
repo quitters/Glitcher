@@ -58,16 +58,23 @@ export class FilterEffects {
         return this.applyEmbossFilter(imageData, intensity, updatedOptions);
         
       case 'edgeDetect':
+        // Extract edge detection parameters - they're stored directly in filterOptions
         return this.applyEdgeDetectionFilter(imageData, intensity, updatedOptions);
         
       case 'motionBlur':
-        return this.applyMotionBlurFilter(imageData, intensity, updatedOptions);
+        // Extract motion blur-specific parameters
+        const motionBlurParams = updatedOptions.motionBlur || {};
+        const motionBlurOptions = { ...updatedOptions, ...motionBlurParams };
+        return this.applyMotionBlurFilter(imageData, intensity, motionBlurOptions);
         
       case 'vignette':
         return this.applyVignetteFilter(imageData, intensity, updatedOptions);
         
       case 'halftone':
-        return this.applyHalftoneFilter(imageData, intensity, updatedOptions);
+        // Extract halftone-specific parameters
+        const halftoneParams = updatedOptions.halftone || {};
+        const halftoneOptions = { ...updatedOptions, ...halftoneParams };
+        return this.applyHalftoneFilter(imageData, intensity, halftoneOptions);
         
       // NEW: Cyberpunk filters
       case 'cyberpunk':
@@ -75,7 +82,12 @@ export class FilterEffects {
         
       // NEW: Artistic filters
       case 'artistic':
-        return ArtisticFilter.apply(imageData, updatedOptions.style || 'oil_painting', intensity, updatedOptions);
+        // Extract artistic-specific parameters from nested structure
+        const artisticStyle = updatedOptions.style || 'oil_painting';
+        const artisticParams = updatedOptions.artisticParams?.[artisticStyle] || {};
+        // Merge the specific parameters with the general options
+        const mergedOptions = { ...updatedOptions, ...artisticParams };
+        return ArtisticFilter.apply(imageData, artisticStyle, intensity, mergedOptions);
         
       // NEW: Atmospheric filters
       case 'atmospheric':
@@ -87,13 +99,22 @@ export class FilterEffects {
         
       // NEW: Advanced Filters
       case 'liquify':
-        return this.applyLiquifyFilter(imageData, intensity, updatedOptions);
+        // Extract liquify-specific parameters
+        const liquifyParams = updatedOptions.liquify || {};
+        const liquifyOptions = { ...updatedOptions, ...liquifyParams };
+        return this.applyLiquifyFilter(imageData, intensity, liquifyOptions);
         
       case 'colorGrading':
-        return this.applyColorGradingFilter(imageData, intensity, updatedOptions);
+        // Extract color grading-specific parameters
+        const colorGradingParams = updatedOptions.colorGrading || {};
+        const colorGradingOptions = { ...updatedOptions, ...colorGradingParams };
+        return this.applyColorGradingFilter(imageData, intensity, colorGradingOptions);
         
       case 'noise':
-        return this.applyNoiseFilter(imageData, intensity, updatedOptions);
+        // Extract noise-specific parameters
+        const noiseParams = updatedOptions.noise || {};
+        const noiseOptions = { ...updatedOptions, ...noiseParams };
+        return this.applyNoiseFilter(imageData, intensity, noiseOptions);
         
       default:
         console.warn(`Unknown filter effect: ${effectType}`);
@@ -194,11 +215,22 @@ export class FilterEffects {
     const outputData = new Uint8ClampedArray(data);
     const normalizedIntensity = intensity / 100;
     
-    // Enhanced options
+    // Enhanced options - support both nested and flat parameter names
     const method = options.method || options.edgeMethod || 'sobel';
     const threshold = options.threshold || options.edgeThreshold || 50;
     const edgeColor = options.edgeColor || [255, 255, 255];
     const background = options.background || options.edgeBackground || 'black';
+    
+    // Determine background color
+    let bgR = 0, bgG = 0, bgB = 0;
+    if (background === 'white') {
+      bgR = bgG = bgB = 255;
+    } else if (background === 'original') {
+      // Will use original pixel colors
+    } else {
+      // Default to black
+      bgR = bgG = bgB = 0;
+    }
     
     // Different kernels for different methods
     let kernelX, kernelY;
@@ -221,36 +253,80 @@ export class FilterEffects {
         kernelY = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]];
     }
     
-    for (let y = 1; y < height - 1; y++) {
-      for (let x = 1; x < width - 1; x++) {
+    // Determine kernel size based on method
+    const kernelSize = (method === 'roberts') ? 2 : 3;
+    const offset = (method === 'roberts') ? 0 : 1;
+    
+    // First pass: detect edges
+    const edgeData = new Uint8ClampedArray(width * height);
+    
+    for (let y = offset; y < height - offset; y++) {
+      for (let x = offset; x < width - offset; x++) {
         let gx = 0, gy = 0;
         
-        for (let ky = 0; ky < 3; ky++) {
-          for (let kx = 0; kx < 3; kx++) {
-            const px = x + kx - 1;
-            const py = y + ky - 1;
-            const idx = (py * width + px) * 4;
+        for (let ky = 0; ky < kernelSize; ky++) {
+          for (let kx = 0; kx < kernelSize; kx++) {
+            const px = x + kx - offset;
+            const py = y + ky - offset;
             
-            // Convert to grayscale for edge detection
-            const gray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
-            
-            gx += gray * kernelX[ky][kx];
-            gy += gray * kernelY[ky][kx];
+            if (px >= 0 && px < width && py >= 0 && py < height) {
+              const idx = (py * width + px) * 4;
+              
+              // Convert to grayscale for edge detection
+              const gray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+              
+              if (kernelX && kernelX[ky] && kernelX[ky][kx] !== undefined) {
+                gx += gray * kernelX[ky][kx];
+              }
+              if (kernelY && kernelY[ky] && kernelY[ky][kx] !== undefined) {
+                gy += gray * kernelY[ky][kx];
+              }
+            }
           }
         }
         
         const magnitude = Math.sqrt(gx * gx + gy * gy);
-        const edgeValue = Math.min(255, magnitude);
-        
+        edgeData[y * width + x] = Math.min(255, magnitude);
+      }
+    }
+    
+    // Second pass: apply threshold and colors
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
         const centerIdx = (y * width + x) * 4;
+        const edgeStrength = edgeData[y * width + x];
         const originalR = data[centerIdx];
         const originalG = data[centerIdx + 1];
         const originalB = data[centerIdx + 2];
         
-        // Blend edge with original
-        outputData[centerIdx]     = originalR + (edgeValue - originalR) * normalizedIntensity;
-        outputData[centerIdx + 1] = originalG + (edgeValue - originalG) * normalizedIntensity;
-        outputData[centerIdx + 2] = originalB + (edgeValue - originalB) * normalizedIntensity;
+        // Check if edge passes threshold
+        const isEdge = edgeStrength > threshold;
+        
+        let finalR, finalG, finalB;
+        
+        if (isEdge) {
+          // Use edge color
+          finalR = edgeColor[0];
+          finalG = edgeColor[1];
+          finalB = edgeColor[2];
+        } else {
+          // Use background
+          if (background === 'original') {
+            finalR = originalR;
+            finalG = originalG;
+            finalB = originalB;
+          } else {
+            finalR = bgR;
+            finalG = bgG;
+            finalB = bgB;
+          }
+        }
+        
+        // Blend with original based on intensity
+        outputData[centerIdx]     = originalR + (finalR - originalR) * normalizedIntensity;
+        outputData[centerIdx + 1] = originalG + (finalG - originalG) * normalizedIntensity;
+        outputData[centerIdx + 2] = originalB + (finalB - originalB) * normalizedIntensity;
+        outputData[centerIdx + 3] = data[centerIdx + 3];
       }
     }
     
@@ -282,6 +358,8 @@ export class FilterEffects {
       case 'horizontal': dx = 1; dy = 0; break;
       case 'vertical': dx = 0; dy = 1; break;
       case 'diagonal': dx = 1; dy = 1; break;
+      case 'diagonal-left': dx = -1; dy = 1; break;
+      case 'diagonal-right': dx = 1; dy = 1; break;
       case 'radial':
         // Radial blur - handled separately
         return this.applyRadialMotionBlur(imageData, intensity, options);
@@ -292,14 +370,14 @@ export class FilterEffects {
     }
     
     // Normalize diagonal vector
-    if (direction === 'diagonal') {
+    if (direction === 'diagonal' || direction === 'diagonal-left' || direction === 'diagonal-right') {
       const length = Math.sqrt(dx * dx + dy * dy);
       dx /= length;
       dy /= length;
     }
     
     // Quality settings determine sampling
-    const samples = quality === 'fast' ? Math.max(3, distance) : 
+    const samples = quality === 'fast' ? Math.max(3, distance / 2) : 
                    quality === 'high' ? distance * 2 : distance;
     
     for (let y = 0; y < height; y++) {
@@ -352,6 +430,7 @@ export class FilterEffects {
           outputData[centerIdx]     = originalR + (blurredR - originalR) * normalizedIntensity;
           outputData[centerIdx + 1] = originalG + (blurredG - originalG) * normalizedIntensity;
           outputData[centerIdx + 2] = originalB + (blurredB - originalB) * normalizedIntensity;
+          outputData[centerIdx + 3] = data[centerIdx + 3];
         }
       }
     }
@@ -424,6 +503,7 @@ export class FilterEffects {
           outputData[centerIdx]     = originalR + ((r / count) - originalR) * normalizedIntensity;
           outputData[centerIdx + 1] = originalG + ((g / count) - originalG) * normalizedIntensity;
           outputData[centerIdx + 2] = originalB + ((b / count) - originalB) * normalizedIntensity;
+          outputData[centerIdx + 3] = data[centerIdx + 3];
         }
       }
     }
@@ -435,36 +515,69 @@ export class FilterEffects {
    * Apply vignette filter
    * @param {ImageData} imageData - Source image data
    * @param {number} intensity - Effect intensity 0-100
+   * @param {Object} options - Vignette options
    * @returns {ImageData} New image data with vignette
    */
-  static applyVignetteFilter(imageData, intensity) {
+  static applyVignetteFilter(imageData, intensity, options = {}) {
     const { data, width, height } = imageData;
     const outputData = new Uint8ClampedArray(data);
     const normalizedIntensity = intensity / 100;
     
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const maxDistance = Math.sqrt(centerX * centerX + centerY * centerY);
+    // Extract vignette options
+    const shape = options.vignetteShape || 'circular';
+    const size = (options.vignetteSize || 50) / 100; // Convert percentage to 0-1
+    const softness = (options.vignetteSoftness || 50) / 100;
+    const vignetteX = (options.vignetteX || 50) / 100; // Convert percentage to 0-1
+    const vignetteY = (options.vignetteY || 50) / 100;
+    const vignetteColor = options.vignetteColor || [0, 0, 0];
+    
+    const centerX = width * vignetteX;
+    const centerY = height * vignetteY;
+    const maxDistance = Math.sqrt(centerX * centerX + centerY * centerY) * (2 - size);
     
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const dx = x - centerX;
         const dy = y - centerY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        let distance;
+        if (shape === 'square') {
+          // Square vignette
+          distance = Math.max(Math.abs(dx), Math.abs(dy));
+        } else if (shape === 'elliptical') {
+          // Elliptical vignette
+          const aspectRatio = width / height;
+          distance = Math.sqrt((dx * dx) + (dy * dy * aspectRatio * aspectRatio));
+        } else {
+          // Circular vignette (default)
+          distance = Math.sqrt(dx * dx + dy * dy);
+        }
         
         // Calculate vignette factor (0 at edges, 1 at center)
         let vignetteFactor = 1 - (distance / maxDistance);
         vignetteFactor = Math.max(0, Math.min(1, vignetteFactor));
         
-        // Apply easing for smoother falloff
-        vignetteFactor = vignetteFactor * vignetteFactor;
+        // Apply softness (higher softness = smoother falloff)
+        const power = 1 + (1 - softness) * 3; // Power from 1 to 4
+        vignetteFactor = Math.pow(vignetteFactor, power);
         
         const idx = (y * width + x) * 4;
+        
+        // Apply vignette with color
         const factor = 1 - (1 - vignetteFactor) * normalizedIntensity;
         
-        outputData[idx]     = data[idx] * factor;
-        outputData[idx + 1] = data[idx + 1] * factor;
-        outputData[idx + 2] = data[idx + 2] * factor;
+        if (vignetteColor[0] === 0 && vignetteColor[1] === 0 && vignetteColor[2] === 0) {
+          // Black vignette (default) - darken
+          outputData[idx]     = data[idx] * factor;
+          outputData[idx + 1] = data[idx + 1] * factor;
+          outputData[idx + 2] = data[idx + 2] * factor;
+        } else {
+          // Colored vignette - blend with vignette color
+          const blendFactor = (1 - vignetteFactor) * normalizedIntensity;
+          outputData[idx]     = data[idx] + (vignetteColor[0] - data[idx]) * blendFactor;
+          outputData[idx + 1] = data[idx + 1] + (vignetteColor[1] - data[idx + 1]) * blendFactor;
+          outputData[idx + 2] = data[idx + 2] + (vignetteColor[2] - data[idx + 2]) * blendFactor;
+        }
         outputData[idx + 3] = data[idx + 3]; // Alpha unchanged
       }
     }
@@ -551,6 +664,7 @@ export class FilterEffects {
               case 'diamond':
                 inDot = Math.abs(rotX) + Math.abs(rotY) <= dotRadius;
                 break;
+              case 'line':
               case 'lines':
                 inDot = Math.abs(rotY) <= dotRadius / 4;
                 break;
@@ -591,6 +705,7 @@ export class FilterEffects {
             outputData[idx]     = Math.max(0, Math.min(255, newR));
             outputData[idx + 1] = Math.max(0, Math.min(255, newG));
             outputData[idx + 2] = Math.max(0, Math.min(255, newB));
+            outputData[idx + 3] = data[idx + 3];
           }
         }
       }
@@ -608,7 +723,10 @@ export class FilterEffects {
    */
   static applyLiquifyFilter(imageData, intensity, options = {}) {
     const { data, width, height } = imageData;
-    const outputData = new Uint8ClampedArray(data);
+    const outputData = new Uint8ClampedArray(data.length);
+    // Initialize with original data
+    outputData.set(data);
+    
     const normalizedIntensity = intensity / 100;
     
     // Liquify options
@@ -740,14 +858,18 @@ export class FilterEffects {
     const outputData = new Uint8ClampedArray(data);
     const normalizedIntensity = intensity / 100;
     
-    // Color grading options
-    const shadows = options.shadows || { r: 0, g: 0, b: 0 }; // -100 to 100
-    const midtones = options.midtones || { r: 0, g: 0, b: 0 };
-    const highlights = options.highlights || { r: 0, g: 0, b: 0 };
-    const temperature = (options.temperature || 0) / 100; // -1 to 1
-    const tint = (options.tint || 0) / 100; // -1 to 1
-    const vibrance = (options.vibrance || 0) / 100; // -1 to 1
-    const saturation = 1 + (options.saturation || 0) / 100; // 0 to 2
+    // Color grading options - support both nested and flat structure
+    const shadows = options.shadows || options.colorGrading?.shadows || { r: 0, g: 0, b: 0 };
+    const midtones = options.midtones || options.colorGrading?.midtones || { r: 0, g: 0, b: 0 };
+    const highlights = options.highlights || options.colorGrading?.highlights || { r: 0, g: 0, b: 0 };
+    const temperature = (options.temperature !== undefined ? options.temperature : 
+                        options.colorGrading?.temperature !== undefined ? options.colorGrading.temperature : 0) / 100;
+    const tint = (options.tint !== undefined ? options.tint : 
+                  options.colorGrading?.tint !== undefined ? options.colorGrading.tint : 0) / 100;
+    const vibrance = (options.vibrance !== undefined ? options.vibrance : 
+                      options.colorGrading?.vibrance !== undefined ? options.colorGrading.vibrance : 0) / 100;
+    const saturation = 1 + (options.saturation !== undefined ? options.saturation : 
+                            options.colorGrading?.saturation !== undefined ? options.colorGrading.saturation : 0) / 100;
     
     for (let i = 0; i < data.length; i += 4) {
       let r = data[i] / 255;

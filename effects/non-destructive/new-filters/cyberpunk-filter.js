@@ -36,14 +36,86 @@ export class CyberpunkFilter {
   }
   
   /**
-   * Apply neon glow effect
+   * Apply neon glow effect with proper glow implementation
    */
   static applyNeonEffect(data, width, height, intensity, options = {}) {
-    const glowRadius = Math.floor((options.glowRadius || 3) * intensity);
+    const glowRadius = Math.max(1, Math.floor((options.glowRadius || 3) * intensity));
     const colorBoost = 1 + (intensity * 0.8);
     
-    // First pass: enhance colors and create edge detection
+    // Create a copy for the original image
+    const originalData = new Uint8ClampedArray(data);
+    
+    // First pass: detect bright areas and edges
+    const glowMap = new Float32Array(width * height);
+    
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+        const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+        
+        // Edge detection using simple gradient
+        let edgeStrength = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nIdx = ((y + dy) * width + (x + dx)) * 4;
+            const nBrightness = (data[nIdx] + data[nIdx + 1] + data[nIdx + 2]) / 3;
+            edgeStrength += Math.abs(brightness - nBrightness);
+          }
+        }
+        
+        // Combine brightness and edge detection for glow sources
+        const glowIntensity = (brightness / 255) * (edgeStrength / 255) * intensity;
+        glowMap[y * width + x] = glowIntensity;
+      }
+    }
+    
+    // Second pass: apply blur to create glow
+    const tempGlow = new Float32Array(width * height);
+    
+    // Horizontal blur pass
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        let sum = 0;
+        let weight = 0;
+        
+        for (let dx = -glowRadius; dx <= glowRadius; dx++) {
+          const nx = x + dx;
+          if (nx >= 0 && nx < width) {
+            const w = Math.exp(-(dx * dx) / (2 * glowRadius * glowRadius));
+            sum += glowMap[y * width + nx] * w;
+            weight += w;
+          }
+        }
+        
+        tempGlow[y * width + x] = weight > 0 ? sum / weight : 0;
+      }
+    }
+    
+    // Vertical blur pass
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        let sum = 0;
+        let weight = 0;
+        
+        for (let dy = -glowRadius; dy <= glowRadius; dy++) {
+          const ny = y + dy;
+          if (ny >= 0 && ny < height) {
+            const w = Math.exp(-(dy * dy) / (2 * glowRadius * glowRadius));
+            sum += tempGlow[ny * width + x] * w;
+            weight += w;
+          }
+        }
+        
+        glowMap[y * width + x] = weight > 0 ? sum / weight : 0;
+      }
+    }
+    
+    // Third pass: combine glow with original image
     for (let i = 0; i < data.length; i += 4) {
+      const pixelIndex = i / 4;
+      const glowStrength = glowMap[pixelIndex];
+      
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
@@ -53,18 +125,34 @@ export class CyberpunkFilter {
       const boostFactor = brightness > 128 ? colorBoost : 1;
       
       // Apply neon color enhancement
-      data[i] = Math.min(255, r * boostFactor);
-      data[i + 1] = Math.min(255, g * boostFactor);
-      data[i + 2] = Math.min(255, b * boostFactor);
+      let newR = Math.min(255, r * boostFactor);
+      let newG = Math.min(255, g * boostFactor);
+      let newB = Math.min(255, b * boostFactor);
       
-      // Add cyan/magenta color cast
+      // Add cyan/magenta color cast for neon look
       if (brightness > 100) {
-        data[i] = Math.min(255, data[i] + (20 * intensity)); // More red
-        data[i + 2] = Math.min(255, data[i + 2] + (30 * intensity)); // More blue
+        newR = Math.min(255, newR + (20 * intensity));
+        newB = Math.min(255, newB + (30 * intensity));
       }
+      
+      // Add glow
+      const glowColor = {
+        r: 255 * glowStrength,
+        g: 255 * glowStrength * 0.8,
+        b: 255 * glowStrength
+      };
+      
+      // Additive blending for glow
+      newR = Math.min(255, newR + glowColor.r);
+      newG = Math.min(255, newG + glowColor.g);
+      newB = Math.min(255, newB + glowColor.b);
+      
+      data[i] = newR;
+      data[i + 1] = newG;
+      data[i + 2] = newB;
     }
     
-    // Second pass: add scanlines
+    // Add scanlines for cyberpunk effect
     for (let y = 0; y < height; y += 3) {
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4;
